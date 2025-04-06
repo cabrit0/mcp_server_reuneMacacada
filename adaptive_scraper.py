@@ -99,44 +99,96 @@ async def puppeteer_scraping_method(url: str, timeout: int = 30) -> Optional[Dic
     try:
         # Obter instância do pool
         browser = await puppeteer_pool.get_browser()
-        page = await browser.newPage()
 
-        # Configurar interceptação de requisições para bloquear recursos desnecessários
-        await page.setRequestInterception(True)
+        page = None
+        try:
+            page = await browser.newPage()
 
-        # Define o manipulador de requisições
-        async def request_handler(req):
-            if req.resourceType in ['stylesheet', 'font', 'image']:
-                await req.abort()
-            else:
-                await req.continue_()
+            # Configurar interceptação de requisições para bloquear recursos desnecessários
+            try:
+                await page.setRequestInterception(True)
 
-        page.on('request', lambda req: asyncio.ensure_future(request_handler(req)))
+                # Define o manipulador de requisições
+                async def request_handler(req):
+                    try:
+                        if req.resourceType in ['stylesheet', 'font', 'image']:
+                            await req.abort()
+                        else:
+                            await req.continue_()
+                    except Exception as e:
+                        logging.error(f"Erro no manipulador de requisições: {str(e)}")
+                        # Tentar continuar a requisição em caso de erro
+                        try:
+                            await req.continue_()
+                        except:
+                            pass
 
-        # Configurar timeout e navegação
-        await page.setDefaultNavigationTimeout(timeout * 1000)
+                page.on('request', lambda req: asyncio.ensure_future(request_handler(req)))
+            except Exception as e:
+                logging.error(f"Erro ao configurar interceptação de requisições: {str(e)}")
 
-        # Navegar para a página
-        await page.goto(url, {'waitUntil': 'domcontentloaded', 'timeout': timeout * 1000})
+            # Configurar timeout e navegação
+            try:
+                await page.setDefaultNavigationTimeout(timeout * 1000)
+            except Exception as e:
+                logging.error(f"Erro ao configurar timeout: {str(e)}")
 
-        # Aguardar um pouco para conteúdo dinâmico carregar
-        await asyncio.sleep(1)
+            # Navegar para a página
+            try:
+                await page.goto(url, {'waitUntil': 'domcontentloaded', 'timeout': timeout * 1000})
+            except Exception as e:
+                logging.error(f"Erro ao navegar para {url}: {str(e)}")
+                # Tentar carregar uma página em branco em caso de erro
+                try:
+                    await page.goto('about:blank')
+                except:
+                    pass
+
+            # Aguardar um pouco para conteúdo dinâmico carregar
+            await asyncio.sleep(1)
+        except Exception as e:
+            logging.error(f"Erro ao inicializar a página: {str(e)}")
+            return None
 
         # Extrair conteúdo e metadados
-        html = await page.content()
+        html = "<html><body>Error</body></html>"
+        title = ""
+        description = ""
 
-        title = await page.evaluate('() => document.title || ""')
+        if page:  # Verificar se a página foi inicializada com sucesso
+            try:
+                html = await page.content()
 
-        description = await page.evaluate('''
-            () => {
-                const metaDesc = document.querySelector('meta[name="description"]');
-                const ogDesc = document.querySelector('meta[property="og:description"]');
-                return (metaDesc && metaDesc.getAttribute('content')) ||
-                       (ogDesc && ogDesc.getAttribute('content')) || '';
-            }
-        ''')
+                # Usar try/except para cada operação que pode falhar
+                try:
+                    title = await page.evaluate('() => document.title || ""')
+                except Exception as e:
+                    logging.error(f"Erro ao obter título: {str(e)}")
+                    title = ""
 
-        await page.close()
+                try:
+                    description = await page.evaluate('''
+                        () => {
+                            const metaDesc = document.querySelector('meta[name="description"]');
+                            const ogDesc = document.querySelector('meta[property="og:description"]');
+                            return (metaDesc && metaDesc.getAttribute('content')) ||
+                                   (ogDesc && ogDesc.getAttribute('content')) || '';
+                        }
+                    ''')
+                except Exception as e:
+                    logging.error(f"Erro ao obter descrição: {str(e)}")
+                    description = ""
+            except Exception as e:
+                logging.error(f"Erro ao extrair conteúdo: {str(e)}")
+                html = "<html><body>Error</body></html>"
+                title = ""
+                description = ""
+
+        if page:  # Verificar se a página foi inicializada com sucesso
+            try:
+                await page.close()
+            except Exception as e:
+                logging.error(f"Erro ao fechar página: {str(e)}")
 
         return {
             'html': html,
