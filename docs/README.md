@@ -42,7 +42,7 @@ Implementação de parâmetros para controlar a estrutura da árvore de aprendiz
 
 ### 10. [Referência de Endpoints](endpoints_reference.md)
 
-Referência completa de todos os endpoints disponíveis no MCP Server v1.0.6.
+Referência completa de todos os endpoints disponíveis no MCP Server v1.1.0.
 
 ### 11. [Melhorias de Performance](performance_improvements.md)
 

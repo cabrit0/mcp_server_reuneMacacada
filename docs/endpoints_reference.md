@@ -1,6 +1,6 @@
 # MCP Server API Endpoints Reference
 
-Este documento contém uma referência completa de todos os endpoints disponíveis no MCP Server v1.0.7.
+Este documento contém uma referência completa de todos os endpoints disponíveis no MCP Server v1.1.0.
 
 ## URL Base
 

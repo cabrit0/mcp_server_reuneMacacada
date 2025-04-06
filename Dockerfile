@@ -2,7 +2,7 @@ FROM python:3.9-slim
 
 # Metadados da imagem
 LABEL maintainer="ReuneMacacada"
-LABEL version="1.0.0"
+LABEL version="1.1.0"
 LABEL description="MCP Server - Gerador de planos de aprendizagem"
 
 WORKDIR /app

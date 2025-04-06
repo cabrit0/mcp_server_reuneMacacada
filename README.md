@@ -222,4 +222,4 @@ This software is proprietary and confidential. Unauthorized copying, distributio
 
 © 2024 ReuneMacacada. All rights reserved.
 
-Last commit: v1.0.7 - Versão estável com sistema de cache otimizado, documentação de otimizações de performance e melhorias no web scraping
+Last commit: v1.1.0 - Versão estável com sistema de cache otimizado, documentação de otimizações de performance, melhorias no web scraping e testes robustos
