@@ -32,6 +32,10 @@ Implementação de filtragem de recursos baseada em TF-IDF para garantir que os 
 
 Implementação da integração com YouTube para incluir vídeos relevantes nos planos de aprendizagem e do sistema de categorias para gerar conteúdo mais específico para diferentes tipos de tópicos.
 
+### 8. [Sistema de Tarefas Assíncronas](async_tasks_system.md)
+
+Implementação de um sistema de tarefas assíncronas com feedback de progresso em tempo real para melhorar a experiência do usuário e evitar timeouts em requisições longas.
+
 ## Endpoints da API
 
 ### Verificação de Saúde
@@ -42,13 +46,13 @@ GET /health
 
 Retorna o status do servidor.
 
-### Geração de MCP
+### Geração de MCP (Síncrona)
 
 ```
 GET /generate_mcp?topic={topic}&max_resources={max_resources}&num_nodes={num_nodes}&language={language}&category={category}
 ```
 
-Gera um plano de aprendizagem para o tópico especificado.
+Gera um plano de aprendizagem para o tópico especificado de forma síncrona (aguarda a conclusão).
 
 **Parâmetros:**
 
@@ -57,6 +61,34 @@ Gera um plano de aprendizagem para o tópico especificado.
 - `num_nodes` (opcional): Número de nós a incluir no plano de aprendizagem (padrão: 15, mín: 10, máx: 30)
 - `language` (opcional): Idioma preferido para os recursos (padrão: "pt")
 - `category` (opcional): Categoria para o tópico (ex: "technology", "finance", "health"). Se não fornecido, será detectado automaticamente.
+
+### Geração de MCP (Assíncrona)
+
+```
+POST /generate_mcp_async?topic={topic}&max_resources={max_resources}&num_nodes={num_nodes}&language={language}&category={category}
+```
+
+Inicia a geração de um plano de aprendizagem em segundo plano e retorna imediatamente com um ID de tarefa.
+
+**Parâmetros:**
+
+- Mesmos parâmetros do endpoint síncrono
+
+### Verificar Status da Tarefa
+
+```
+GET /status/{task_id}
+```
+
+Retorna informações detalhadas sobre o status de uma tarefa, incluindo progresso, mensagens e resultado (quando concluída).
+
+### Listar Tarefas
+
+```
+GET /tasks
+```
+
+Retorna uma lista de todas as tarefas no servidor.
 
 ## Exemplos de Uso
 
@@ -88,4 +120,16 @@ GET /generate_mcp?topic=história+do+brasil&max_resources=20&num_nodes=25
 
 ```
 GET /generate_mcp?topic=design&category=technology
+```
+
+### Exemplo 6: Gerar um MCP de forma assíncrona
+
+```
+POST /generate_mcp_async?topic=inteligência+artificial&category=technology
+```
+
+### Exemplo 7: Verificar o status de uma tarefa
+
+```
+GET /status/550e8400-e29b-41d4-a716-446655440000
 ```

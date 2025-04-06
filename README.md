@@ -15,6 +15,7 @@ A server that generates Master Content Plans (MCPs) based on topics. The server 
 - **NEW**: Strategic quiz distribution across learning trees for balanced learning experiences
 - **NEW**: YouTube integration to include relevant videos in learning paths
 - **NEW**: Category system to generate more specific content for different types of topics
+- **NEW**: Asynchronous task system with real-time progress feedback to improve user experience and avoid timeouts
 
 ## Tech Stack
 
@@ -71,12 +72,15 @@ A server that generates Master Content Plans (MCPs) based on topics. The server 
 ## API Endpoints
 
 - `GET /health` - Health check endpoint
-- `GET /generate_mcp?topic={topic}&max_resources={max_resources}&num_nodes={num_nodes}&language={language}&category={category}` - Generate an MCP for the specified topic
+- `GET /generate_mcp?topic={topic}&max_resources={max_resources}&num_nodes={num_nodes}&language={language}&category={category}` - Generate an MCP for the specified topic synchronously
   - `topic` (required): The topic to generate an MCP for (minimum 3 characters)
   - `max_resources` (optional): Maximum number of resources to include (default: 15, min: 5, max: 30)
   - `num_nodes` (optional): Number of nodes to include in the learning path (default: 15, min: 10, max: 30)
   - `language` (optional): Language for resources (default: "pt")
   - `category` (optional): Category for the topic (e.g., "technology", "finance", "health"). If not provided, it will be detected automatically.
+- `POST /generate_mcp_async?topic={topic}&max_resources={max_resources}&num_nodes={num_nodes}&language={language}&category={category}` - Start asynchronous generation of an MCP
+- `GET /status/{task_id}` - Check the status of an asynchronous task
+- `GET /tasks` - List all tasks
 
 ## Examples
 
@@ -110,6 +114,18 @@ GET /generate_mcp?topic=python&category=technology
 GET /generate_mcp?topic=história+do+brasil&max_resources=20&num_nodes=25&language=pt
 ```
 
+### Asynchronous generation
+
+```
+POST /generate_mcp_async?topic=inteligência+artificial&category=technology
+```
+
+### Check task status
+
+```
+GET /status/550e8400-e29b-41d4-a716-446655440000
+```
+
 ## Deployment
 
 The server can be deployed to various platforms:
@@ -133,4 +149,4 @@ This software is proprietary and confidential. Unauthorized copying, distributio
 
 © 2024 ReuneMacacada. All rights reserved.
 
-Last commit: v1.0.0 - Versão estável com integração YouTube e sistema de categorias
+Last commit: v1.0.0 - Versão estável com integração YouTube, sistema de categorias e tarefas assíncronas
