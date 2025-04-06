@@ -47,7 +47,8 @@ async def generate_mcp_endpoint(
     topic: str = Query(..., min_length=3, description="The topic to generate an MCP for"),
     max_resources: Optional[int] = Query(15, ge=5, le=30, description="Maximum number of resources to include"),
     num_nodes: Optional[int] = Query(15, ge=10, le=30, description="Number of nodes to include in the learning path"),
-    language: Optional[str] = Query("pt", description="Language for resources (e.g., 'pt', 'en', 'es')")
+    language: Optional[str] = Query("pt", description="Language for resources (e.g., 'pt', 'en', 'es')"),
+    category: Optional[str] = Query(None, description="Category for the topic (e.g., 'technology', 'finance', 'health'). If not provided, it will be detected automatically.")
 ):
     """
     Generate a Master Content Plan (MCP) for a given topic.
@@ -61,14 +62,14 @@ async def generate_mcp_endpoint(
         logger.info(f"Received request for topic: {topic}")
 
         # Check cache first
-        cache_key = f"{topic}_{max_resources}_{num_nodes}_{language}"
+        cache_key = f"{topic}_{max_resources}_{num_nodes}_{language}_{category}"
         if cache_key in mcp_cache:
             logger.info(f"Returning cached MCP for topic: {topic}")
             return mcp_cache[cache_key]
 
         # Find resources
         logger.info(f"Finding resources for topic: {topic} in language: {language}")
-        resources = await content_sourcing.find_resources(topic, max_results=max_resources, language=language)
+        resources = await content_sourcing.find_resources(topic, max_results=max_resources, language=language, category=category)
 
         if not resources:
             logger.warning(f"No resources found for topic: {topic}")
@@ -79,7 +80,7 @@ async def generate_mcp_endpoint(
         # Generate learning path
         logger.info(f"Generating learning path for topic: {topic} with {num_nodes} nodes")
         try:
-            mcp = path_generator.generate_learning_path(topic, resources, min_nodes=num_nodes, max_nodes=num_nodes+10)
+            mcp = await path_generator.generate_learning_path(topic, resources, min_nodes=num_nodes, max_nodes=num_nodes+10, category=category, language=language)
 
             # Cache the result (limit cache size to 50 entries)
             if len(mcp_cache) >= 50:

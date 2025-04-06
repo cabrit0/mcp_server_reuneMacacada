@@ -6,3 +6,7 @@ beautifulsoup4==4.13.3
 lxml==5.3.2
 pyppeteer==2.0.0
 duckduckgo-search==2025.4.4
+scikit-learn>=1.0.0
+numpy>=1.20.0
+yt-dlp>=2023.7.6
+pydantic>=2.0.0

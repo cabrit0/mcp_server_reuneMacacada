@@ -36,3 +36,11 @@ ENV/
 # OS
 .DS_Store
 Thumbs.db
+
+# Arquivos temporários
+*.json
+*.log
+tmp/
+
+# Arquivos de teste
+test_*.py

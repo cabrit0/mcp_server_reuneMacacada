@@ -110,6 +110,7 @@ class Resource {
   final int? duration;
   final int? readTime;
   final String? difficulty;
+  final String? thumbnail;  // URL da imagem de thumbnail
 
   Resource({
     required this.id,
@@ -120,6 +121,7 @@ class Resource {
     this.duration,
     this.readTime,
     this.difficulty,
+    this.thumbnail,
   });
 
   factory Resource.fromJson(Map<String, dynamic> json) => _$ResourceFromJson(json);
@@ -177,14 +179,15 @@ import '../models/mcp.dart';
 
 class MCPService {
   final String baseUrl;
-  
+
   MCPService({required this.baseUrl});
-  
+
   Future<MCP> generateMCP({
     required String topic,
     int? maxResources,
     int? numNodes,
     String? language,
+    String? category,  // Categoria para o tópico (opcional)
   }) async {
     // Construir a URL com os parâmetros
     final queryParams = {
@@ -192,15 +195,16 @@ class MCPService {
       if (maxResources != null) 'max_resources': maxResources.toString(),
       if (numNodes != null) 'num_nodes': numNodes.toString(),
       if (language != null) 'language': language,
+      if (category != null) 'category': category,
     };
-    
+
     final uri = Uri.parse('$baseUrl/generate_mcp').replace(
       queryParameters: queryParams,
     );
-    
+
     try {
       final response = await http.get(uri);
-      
+
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body);
         return MCP.fromJson(jsonData);
@@ -212,7 +216,7 @@ class MCPService {
       throw Exception('Erro de conexão: $e');
     }
   }
-  
+
   Future<bool> checkHealth() async {
     try {
       final response = await http.get(Uri.parse('$baseUrl/health'));
@@ -240,15 +244,15 @@ void main() {
   final mcpService = MCPService(
     baseUrl: 'https://reunemacacada.onrender.com',
   );
-  
+
   runApp(MyApp(mcpService: mcpService));
 }
 
 class MyApp extends StatelessWidget {
   final MCPService mcpService;
-  
+
   const MyApp({Key? key, required this.mcpService}) : super(key: key);
-  
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -275,9 +279,9 @@ import 'mcp_view_page.dart';
 
 class HomePage extends StatefulWidget {
   final MCPService mcpService;
-  
+
   const HomePage({Key? key, required this.mcpService}) : super(key: key);
-  
+
   @override
   _HomePageState createState() => _HomePageState();
 }
@@ -285,13 +289,13 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final _formKey = GlobalKey<FormState>();
   final _topicController = TextEditingController();
-  
+
   String? _selectedLanguage = 'pt';
   int _numNodes = 15;
   int _maxResources = 15;
   bool _isLoading = false;
   String? _errorMessage;
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -322,7 +326,7 @@ class _HomePageState extends State<HomePage> {
                 },
               ),
               const SizedBox(height: 16),
-              
+
               DropdownButtonFormField<String>(
                 value: _selectedLanguage,
                 decoration: const InputDecoration(
@@ -339,9 +343,9 @@ class _HomePageState extends State<HomePage> {
                   });
                 },
               ),
-              
+
               const SizedBox(height: 16),
-              
+
               Text('Número de nós: $_numNodes'),
               Slider(
                 value: _numNodes.toDouble(),
@@ -355,9 +359,9 @@ class _HomePageState extends State<HomePage> {
                   });
                 },
               ),
-              
+
               const SizedBox(height: 16),
-              
+
               Text('Máximo de recursos: $_maxResources'),
               Slider(
                 value: _maxResources.toDouble(),
@@ -371,7 +375,7 @@ class _HomePageState extends State<HomePage> {
                   });
                 },
               ),
-              
+
               if (_errorMessage != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 16),
@@ -380,9 +384,9 @@ class _HomePageState extends State<HomePage> {
                     style: const TextStyle(color: Colors.red),
                   ),
                 ),
-              
+
               const Spacer(),
-              
+
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -398,14 +402,14 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
-  
+
   Future<void> _generateMCP() async {
     if (_formKey.currentState!.validate()) {
       setState(() {
         _isLoading = true;
         _errorMessage = null;
       });
-      
+
       try {
         final mcp = await widget.mcpService.generateMCP(
           topic: _topicController.text,
@@ -413,9 +417,9 @@ class _HomePageState extends State<HomePage> {
           numNodes: _numNodes,
           language: _selectedLanguage,
         );
-        
+
         if (!mounted) return;
-        
+
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -435,7 +439,7 @@ class _HomePageState extends State<HomePage> {
       }
     }
   }
-  
+
   @override
   void dispose() {
     _topicController.dispose();
@@ -455,9 +459,9 @@ import '../models/mcp.dart';
 
 class MCPViewPage extends StatelessWidget {
   final MCP mcp;
-  
+
   const MCPViewPage({Key? key, required this.mcp}) : super(key: key);
-  
+
   @override
   Widget build(BuildContext context) {
     // Obter o nó raiz
@@ -468,10 +472,10 @@ class MCPViewPage extends StatelessWidget {
         body: const Center(child: Text('Erro: Nó raiz não encontrado')),
       );
     }
-    
+
     // Construir a árvore de nós
     final nodeTree = _buildNodeTree(rootNode, mcp.nodes);
-    
+
     return Scaffold(
       appBar: AppBar(
         title: Text(mcp.title),
@@ -491,7 +495,7 @@ class MCPViewPage extends StatelessWidget {
               style: Theme.of(context).textTheme.bodyLarge,
             ),
             const SizedBox(height: 16),
-            
+
             // Metadados
             Card(
               child: Padding(
@@ -512,7 +516,7 @@ class MCPViewPage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            
+
             // Árvore de nós
             Text(
               'Plano de Aprendizagem',
@@ -525,17 +529,17 @@ class MCPViewPage extends StatelessWidget {
       ),
     );
   }
-  
+
   Widget _buildNodeTree(Node rootNode, Map<String, Node> allNodes) {
     return _buildNodeWidget(rootNode, allNodes, 0);
   }
-  
+
   Widget _buildNodeWidget(Node node, Map<String, Node> allNodes, int depth) {
     // Encontrar nós filhos (nós que têm este nó como pré-requisito)
     final childNodes = allNodes.values
         .where((n) => n.prerequisites.contains(node.id))
         .toList();
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -553,7 +557,7 @@ class MCPViewPage extends StatelessWidget {
                   children: [
                     Text(node.description),
                     const SizedBox(height: 8),
-                    
+
                     if (node.resources.isNotEmpty) ...[
                       const Text(
                         'Recursos:',
@@ -568,13 +572,53 @@ class MCPViewPage extends StatelessWidget {
                         },
                       )),
                     ],
+
+                    // Exibir quiz se disponível
+                    if (node.quiz != null) ...[
+                      const Divider(),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Quiz:',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      ...node.quiz!.questions.map((question) => Card(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                question.text,
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              const SizedBox(height: 8),
+                              ...List.generate(
+                                question.options.length,
+                                (index) => RadioListTile<int>(
+                                  title: Text(question.options[index]),
+                                  value: index,
+                                  groupValue: null, // Substitua por uma variável de estado
+                                  onChanged: (value) {
+                                    // Implemente a lógica para verificar a resposta
+                                    final isCorrect = value == question.correctOptionIndex;
+                                    // Atualize o estado e mostre feedback
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )),
+                    ],
                   ],
                 ),
               ),
             ],
           ),
         ),
-        
+
         // Nós filhos
         if (childNodes.isNotEmpty)
           Padding(
@@ -620,16 +664,16 @@ class ErrorHandler {
       ),
     );
   }
-  
+
   static String getErrorMessage(dynamic error) {
     if (error.toString().contains('Could not generate enough nodes')) {
       return 'Não foi possível gerar nós suficientes para este tópico. Tente um tópico mais amplo ou reduza o número mínimo de nós.';
     }
-    
+
     if (error.toString().contains('No resources found')) {
       return 'Não foram encontrados recursos para este tópico. Tente outro tópico ou outro idioma.';
     }
-    
+
     return 'Ocorreu um erro: ${error.toString()}';
   }
 }
@@ -649,7 +693,7 @@ import '../models/mcp.dart';
 
 class MCPCacheService {
   static const String _cacheKeyPrefix = 'mcp_cache_';
-  
+
   Future<void> cacheMCP({
     required String topic,
     required int? numNodes,
@@ -664,10 +708,10 @@ class MCPCacheService {
       maxResources: maxResources,
       language: language,
     );
-    
+
     await prefs.setString(key, json.encode(mcp.toJson()));
   }
-  
+
   Future<MCP?> getCachedMCP({
     required String topic,
     required int? numNodes,
@@ -681,7 +725,7 @@ class MCPCacheService {
       maxResources: maxResources,
       language: language,
     );
-    
+
     final cachedData = prefs.getString(key);
     if (cachedData != null) {
       try {
@@ -690,10 +734,10 @@ class MCPCacheService {
         return null;
       }
     }
-    
+
     return null;
   }
-  
+
   String _generateCacheKey({
     required String topic,
     required int? numNodes,
@@ -726,13 +770,13 @@ import 'mcp_view_page.dart';
 class TopicSearchPage extends StatefulWidget {
   final MCPService mcpService;
   final MCPCacheService cacheService;
-  
+
   const TopicSearchPage({
     Key? key,
     required this.mcpService,
     required this.cacheService,
   }) : super(key: key);
-  
+
   @override
   _TopicSearchPageState createState() => _TopicSearchPageState();
 }
@@ -740,7 +784,7 @@ class TopicSearchPage extends StatefulWidget {
 class _TopicSearchPageState extends State<TopicSearchPage> {
   final _searchController = TextEditingController();
   bool _isLoading = false;
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -761,22 +805,22 @@ class _TopicSearchPageState extends State<TopicSearchPage> {
               onSubmitted: (_) => _searchTopic(),
             ),
             const SizedBox(height: 16),
-            
+
             ElevatedButton(
               onPressed: _isLoading ? null : _searchTopic,
               child: _isLoading
                   ? const CircularProgressIndicator()
                   : const Text('Gerar Plano de Aprendizagem'),
             ),
-            
+
             const SizedBox(height: 24),
-            
+
             const Text(
               'Tópicos Populares',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            
+
             Wrap(
               spacing: 8,
               children: [
@@ -793,7 +837,7 @@ class _TopicSearchPageState extends State<TopicSearchPage> {
       ),
     );
   }
-  
+
   Widget _buildTopicChip(String topic) {
     return ActionChip(
       label: Text(topic),
@@ -803,7 +847,7 @@ class _TopicSearchPageState extends State<TopicSearchPage> {
       },
     );
   }
-  
+
   Future<void> _searchTopic() async {
     final topic = _searchController.text.trim();
     if (topic.isEmpty) {
@@ -812,11 +856,11 @@ class _TopicSearchPageState extends State<TopicSearchPage> {
       );
       return;
     }
-    
+
     setState(() {
       _isLoading = true;
     });
-    
+
     try {
       // Verificar cache primeiro
       final cachedMCP = await widget.cacheService.getCachedMCP(
@@ -825,10 +869,10 @@ class _TopicSearchPageState extends State<TopicSearchPage> {
         maxResources: null,
         language: null,
       );
-      
+
       if (cachedMCP != null) {
         if (!mounted) return;
-        
+
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -837,21 +881,25 @@ class _TopicSearchPageState extends State<TopicSearchPage> {
         );
         return;
       }
-      
+
       // Se não estiver em cache, buscar da API
-      final mcp = await widget.mcpService.generateMCP(topic: topic);
-      
+      final mcp = await widget.mcpService.generateMCP(
+        topic: topic,
+        category: _selectedCategory,  // Categoria selecionada pelo usuário
+      );
+
       // Armazenar em cache
       await widget.cacheService.cacheMCP(
         topic: topic,
         numNodes: null,
         maxResources: null,
         language: null,
+        category: _selectedCategory,
         mcp: mcp,
       );
-      
+
       if (!mounted) return;
-      
+
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -860,7 +908,7 @@ class _TopicSearchPageState extends State<TopicSearchPage> {
       );
     } catch (e) {
       if (!mounted) return;
-      
+
       ErrorHandler.showErrorDialog(
         context,
         ErrorHandler.getErrorMessage(e),
@@ -873,7 +921,7 @@ class _TopicSearchPageState extends State<TopicSearchPage> {
       }
     }
   }
-  
+
   @override
   void dispose() {
     _searchController.dispose();
@@ -882,13 +930,236 @@ class _TopicSearchPageState extends State<TopicSearchPage> {
 }
 ```
 
+## Novas Funcionalidades
+
+### 1. Filtragem de Recursos por Relevância
+
+O MCP Server agora utiliza TF-IDF (Term Frequency-Inverse Document Frequency) para garantir que os recursos retornados sejam relevantes ao tópico solicitado. Isso significa que:
+
+- Recursos irrelevantes são filtrados automaticamente
+- Ao solicitar um tópico como "culinária", você receberá apenas recursos relacionados à culinária
+- A qualidade dos planos de aprendizagem é significativamente melhorada
+
+Para aproveitar esta funcionalidade no Flutter, não é necessária nenhuma alteração no código de integração, pois a filtragem acontece no servidor.
+
+### 2. Distribuição Estratégica de Quizzes
+
+Os quizzes agora são distribuídos estrategicamente pela árvore de aprendizagem, garantindo:
+
+- Distribuição equilibrada em diferentes ramos e níveis
+- Perguntas mais relevantes baseadas nos recursos do nó
+- Variedade de tipos de perguntas
+- Experiência de aprendizagem mais coerente
+
+Para exibir os quizzes no seu aplicativo Flutter, você pode adicionar uma seção específica na visualização do nó:
+
+```dart
+// Adicione este código dentro do ExpansionTile em _buildNodeWidget
+if (node.quiz != null) ...[
+  const Divider(),
+  const SizedBox(height: 8),
+  const Text(
+    'Quiz:',
+    style: TextStyle(fontWeight: FontWeight.bold),
+  ),
+  const SizedBox(height: 8),
+  ...node.quiz!.questions.map((question) => Card(
+    margin: const EdgeInsets.only(bottom: 8),
+    child: Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            question.text,
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          ...List.generate(
+            question.options.length,
+            (index) => RadioListTile<int>(
+              title: Text(question.options[index]),
+              value: index,
+              groupValue: null, // Substitua por uma variável de estado
+              onChanged: (value) {
+                // Implemente a lógica para verificar a resposta
+                final isCorrect = value == question.correctOptionIndex;
+                // Atualize o estado e mostre feedback
+              },
+            ),
+          ),
+        ],
+      ),
+    ),
+  )),
+],
+```
+
+### 3. Integração com YouTube
+
+O MCP Server agora inclui vídeos do YouTube nos planos de aprendizagem, enriquecendo a experiência do usuário com conteúdo multimídia. Cada vídeo inclui informações como título, descrição, duração e thumbnail.
+
+Para exibir vídeos do YouTube com thumbnails no seu aplicativo Flutter:
+
+```dart
+// Adicione este código para exibir recursos com thumbnails
+Widget _buildResourceWidget(Resource resource) {
+  return ListTile(
+    // Exibir thumbnail para vídeos
+    leading: resource.type == 'video' && resource.thumbnail != null
+      ? Image.network(
+          resource.thumbnail!,
+          width: 60,
+          height: 45,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) => Icon(Icons.video_library),
+        )
+      : Icon(_getIconForResourceType(resource.type)),
+    title: Text(resource.title),
+    subtitle: Text(resource.description ?? ''),
+    trailing: Icon(Icons.open_in_new),
+    onTap: () async {
+      final url = resource.url;
+      if (await canLaunch(url)) {
+        await launch(url);
+      }
+    },
+  );
+}
+
+IconData _getIconForResourceType(String type) {
+  switch (type) {
+    case 'video':
+      return Icons.video_library;
+    case 'article':
+      return Icons.article;
+    case 'documentation':
+      return Icons.menu_book;
+    case 'tutorial':
+      return Icons.school;
+    default:
+      return Icons.link;
+  }
+}
+```
+
+### 4. Sistema de Categorias
+
+O MCP Server agora permite especificar a categoria do tópico, resultando em planos de aprendizagem mais relevantes e específicos. As categorias disponíveis incluem: technology, finance, health, education, arts, science, business, lifestyle e general.
+
+Para implementar a seleção de categoria no seu aplicativo Flutter:
+
+```dart
+// Adicione estas variáveis de estado na sua classe
+String? _selectedCategory;
+final List<Map<String, String>> _categories = [
+  {'value': '', 'label': 'Detecção automática'},
+  {'value': 'technology', 'label': 'Tecnologia'},
+  {'value': 'finance', 'label': 'Finanças'},
+  {'value': 'health', 'label': 'Saúde'},
+  {'value': 'education', 'label': 'Educação'},
+  {'value': 'arts', 'label': 'Artes'},
+  {'value': 'science', 'label': 'Ciências'},
+  {'value': 'business', 'label': 'Negócios'},
+  {'value': 'lifestyle', 'label': 'Estilo de Vida'},
+  {'value': 'general', 'label': 'Geral'},
+];
+
+// Adicione este widget ao seu formulário
+DropdownButtonFormField<String>(
+  decoration: InputDecoration(
+    labelText: 'Categoria',
+    border: OutlineInputBorder(),
+  ),
+  value: _selectedCategory,
+  items: _categories.map((category) {
+    return DropdownMenuItem<String>(
+      value: category['value'],
+      child: Text(category['label']!),
+    );
+  }).toList(),
+  onChanged: (value) {
+    setState(() {
+      _selectedCategory = value;
+    });
+  },
+  hint: Text('Selecione uma categoria (opcional)'),
+)
+```
+
+E ao chamar o serviço, inclua o parâmetro de categoria:
+
+```dart
+final mcp = await mcpService.generateMCP(
+  topic: topic,
+  category: _selectedCategory,  // Categoria selecionada pelo usuário
+);
+```
+
+Lembre-se de atualizar o serviço de cache para incluir a categoria:
+
+```dart
+Future<void> cacheMCP({
+  required String topic,
+  int? numNodes,
+  int? maxResources,
+  String? language,
+  String? category,  // Adicionar parâmetro de categoria
+  required MCP mcp,
+}) async {
+  final key = _generateCacheKey(topic, numNodes, maxResources, language, category);
+  final json = jsonEncode(mcp.toJson());
+  await _storage.write(key: key, value: json);
+}
+
+Future<MCP?> getCachedMCP({
+  required String topic,
+  int? numNodes,
+  int? maxResources,
+  String? language,
+  String? category,  // Adicionar parâmetro de categoria
+}) async {
+  final key = _generateCacheKey(topic, numNodes, maxResources, language, category);
+  final json = await _storage.read(key: key);
+  if (json == null) return null;
+  return MCP.fromJson(jsonDecode(json));
+}
+
+String _generateCacheKey(
+  String topic,
+  int? numNodes,
+  int? maxResources,
+  String? language,
+  String? category,  // Adicionar parâmetro de categoria
+) {
+  return 'mcp_${topic}_${numNodes ?? "default"}_${maxResources ?? "default"}_${language ?? "default"}_${category ?? "auto"}';
+}
+```
+
 ## Conclusão
 
 A integração do MCP Server com Flutter permite criar aplicativos de aprendizagem ricos e personalizados. Com as novas funcionalidades do servidor, você pode:
 
-1. Gerar planos de aprendizagem para qualquer tema
+1. Gerar planos de aprendizagem para qualquer tema com recursos altamente relevantes
 2. Personalizar o número de nós e recursos
 3. Suportar múltiplos idiomas, com foco em português
-4. Aproveitar as otimizações de performance para uma experiência de usuário mais fluida
+4. Aproveitar quizzes distribuídos estrategicamente para uma experiência de aprendizagem mais equilibrada
+5. Incluir vídeos do YouTube com thumbnails para enriquecer o conteúdo
+6. Especificar categorias para obter planos de aprendizagem mais relevantes e específicos
+7. Aproveitar as otimizações de performance para uma experiência de usuário mais fluida
 
-Lembre-se de implementar cache local e tratamento de erros adequado para lidar com as limitações do free tier do Render e proporcionar a melhor experiência possível aos usuários.
+## Considerações para Implantação no Render
+
+O MCP Server está hospedado no Render (https://reunemacacada.onrender.com), e há algumas considerações importantes para garantir uma boa experiência do usuário:
+
+1. **Cache Local**: Implemente cache local para reduzir o número de requisições ao servidor, já que o free tier do Render tem limitações de recursos.
+
+2. **Tratamento de Timeout**: Configure timeouts adequados para as requisições, pois a geração de planos de aprendizagem pode levar mais tempo no free tier.
+
+3. **Feedback Visual**: Sempre forneça feedback visual ao usuário enquanto o plano está sendo gerado.
+
+4. **Tratamento de Erros**: Implemente tratamento de erros robusto para lidar com possíveis falhas na API.
+
+5. **Modo Offline**: Considere implementar um modo offline que permita aos usuários acessar planos de aprendizagem previamente baixados.
+
+Seguindo estas recomendações, você pode proporcionar a melhor experiência possível aos usuários, mesmo com as limitações do free tier do Render.

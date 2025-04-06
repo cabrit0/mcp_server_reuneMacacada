@@ -11,6 +11,10 @@ A server that generates Master Content Plans (MCPs) based on topics. The server 
 - Performance optimizations for Render's free tier
 - Caching system for faster responses
 - Return a standardized JSON structure for consumption by client applications
+- **NEW**: TF-IDF based resource relevance filtering to ensure resources match the requested topic
+- **NEW**: Strategic quiz distribution across learning trees for balanced learning experiences
+- **NEW**: YouTube integration to include relevant videos in learning paths
+- **NEW**: Category system to generate more specific content for different types of topics
 
 ## Tech Stack
 
@@ -19,6 +23,8 @@ A server that generates Master Content Plans (MCPs) based on topics. The server 
 - Pyppeteer for JavaScript-heavy web scraping
 - DuckDuckGo Search API
 - BeautifulSoup for HTML parsing
+- scikit-learn for TF-IDF based resource relevance filtering
+- yt-dlp for YouTube video search and metadata extraction
 
 ## Installation
 
@@ -65,11 +71,12 @@ A server that generates Master Content Plans (MCPs) based on topics. The server 
 ## API Endpoints
 
 - `GET /health` - Health check endpoint
-- `GET /generate_mcp?topic={topic}&max_resources={max_resources}&num_nodes={num_nodes}&language={language}` - Generate an MCP for the specified topic
+- `GET /generate_mcp?topic={topic}&max_resources={max_resources}&num_nodes={num_nodes}&language={language}&category={category}` - Generate an MCP for the specified topic
   - `topic` (required): The topic to generate an MCP for (minimum 3 characters)
   - `max_resources` (optional): Maximum number of resources to include (default: 15, min: 5, max: 30)
   - `num_nodes` (optional): Number of nodes to include in the learning path (default: 15, min: 10, max: 30)
   - `language` (optional): Language for resources (default: "pt")
+  - `category` (optional): Category for the topic (e.g., "technology", "finance", "health"). If not provided, it will be detected automatically.
 
 ## Examples
 
@@ -89,6 +96,12 @@ GET /generate_mcp?topic=machine+learning&num_nodes=20
 
 ```
 GET /generate_mcp?topic=javascript&language=en
+```
+
+### Specify category manually
+
+```
+GET /generate_mcp?topic=python&category=technology
 ```
 
 ### Full customization
@@ -120,4 +133,4 @@ This software is proprietary and confidential. Unauthorized copying, distributio
 
 © 2024 ReuneMacacada. All rights reserved.
 
-Last commit: cdb2fcb - Versão inicial do server
+Last commit: v1.0.0 - Versão estável com integração YouTube e sistema de categorias

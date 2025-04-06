@@ -1,15 +1,19 @@
 import asyncio
 import re
 import uuid
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple, Union
 from urllib.parse import urlparse
 
 import requests
 from bs4 import BeautifulSoup
 from duckduckgo_search import DDGS
 from pyppeteer import launch
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 from schemas import Resource
+from categories import detect_category, get_resource_queries_for_category
+from youtube_integration import search_youtube_videos
 
 # Simple cache for search results and scraped content
 search_cache = {}
@@ -205,6 +209,99 @@ def get_region_for_language(language: str) -> str:
     return language_to_region.get(language, "us-en")
 
 
+def get_stopwords(language: str) -> List[str]:
+    """Get stopwords for a specific language."""
+    # Basic stopwords for different languages
+    stopwords = {
+        "en": ["the", "and", "or", "in", "on", "at", "to", "a", "an", "of", "for", "with", "by", "as", "is", "are", "was", "were"],
+        "pt": ["o", "a", "os", "as", "um", "uma", "uns", "umas", "de", "do", "da", "dos", "das", "em", "no", "na", "nos", "nas", "por", "para", "com", "e", "ou", "que", "se"],
+        "es": ["el", "la", "los", "las", "un", "una", "unos", "unas", "de", "del", "en", "por", "para", "con", "y", "o", "que", "si"],
+        # Add more languages as needed
+    }
+    return stopwords.get(language, stopwords["en"])
+
+
+def score_resource_relevance(resources: List[Resource], topic: str, language: str = "en") -> List[Tuple[Resource, float]]:
+    """
+    Score resources based on their relevance to the topic using TF-IDF.
+
+    Args:
+        resources: List of Resource objects
+        topic: The search topic
+        language: Language code for stopwords
+
+    Returns:
+        List of (resource, score) tuples sorted by relevance score
+    """
+    # Prepare text content from resources
+    texts = []
+    for resource in resources:
+        # Combine title, description with different weights
+        text = (resource.title + " ") * 3  # Title has 3x weight
+        if resource.description:
+            text += (resource.description + " ") * 2  # Description has 2x weight
+        texts.append(text.lower())
+
+    # Add the topic as the last document
+    texts.append(topic.lower())
+
+    # Create TF-IDF vectorizer
+    vectorizer = TfidfVectorizer(stop_words=get_stopwords(language))
+
+    try:
+        # Transform texts to TF-IDF vectors
+        tfidf_matrix = vectorizer.fit_transform(texts)
+
+        # Calculate cosine similarity between each resource and the topic
+        topic_vector = tfidf_matrix[-1]  # Last vector is the topic
+        resource_vectors = tfidf_matrix[:-1]  # All other vectors are resources
+
+        # Calculate similarity scores
+        similarity_scores = cosine_similarity(resource_vectors, topic_vector)
+
+        # Create (resource, score) pairs
+        scored_resources = [(resources[i], similarity_scores[i][0])
+                           for i in range(len(resources))]
+
+        # Sort by score in descending order
+        return sorted(scored_resources, key=lambda x: x[1], reverse=True)
+
+    except Exception as e:
+        print(f"Error in TF-IDF calculation: {e}")
+        # Return resources with default score if TF-IDF fails
+        return [(resource, 0.5) for resource in resources]
+
+
+def filter_resources_by_relevance(resources: List[Resource], topic: str, threshold: float = 0.3, language: str = "en") -> List[Resource]:
+    """
+    Filter resources based on relevance to the topic.
+
+    Args:
+        resources: List of Resource objects
+        topic: The search topic
+        threshold: Minimum relevance score (0-1)
+        language: Language code
+
+    Returns:
+        Filtered list of Resource objects
+    """
+    if not resources:
+        return []
+
+    scored_resources = score_resource_relevance(resources, topic, language)
+
+    # Filter by threshold
+    filtered_resources = [resource for resource, score in scored_resources
+                         if score >= threshold]
+
+    # If filtering removed too many resources, return at least a few
+    if len(filtered_resources) < min(3, len(resources)):
+        # Return top 3 resources regardless of threshold
+        return [resource for resource, _ in scored_resources[:min(3, len(scored_resources))]]
+
+    return filtered_resources
+
+
 def scrape_basic_site(url: str, topic: str, language: str = "en") -> Optional[Dict[str, Any]]:
     """
     Scrape content from a website using requests and BeautifulSoup.
@@ -303,20 +400,36 @@ def scrape_basic_site(url: str, topic: str, language: str = "en") -> Optional[Di
         return None
 
 
-async def find_resources(topic: str, max_results: int = 15, language: str = "en") -> List[Resource]:
+async def find_resources(topic: str, max_results: int = 15, language: str = "pt", category: Optional[str] = None) -> List[Resource]:
     """
-    Find resources about a topic using various methods.
+    Find resources about a topic using various methods, including YouTube videos.
 
     Args:
         topic: The topic to search for
         max_results: Maximum number of results to return
+        language: Language code (pt, en, es, etc.)
 
     Returns:
         List of Resource objects
     """
+    # Check cache first
+    cache_key = f"{topic}_{max_results}_{language}_{category}"
+    if cache_key in search_cache:
+        return search_cache[cache_key]
+
+    # Use provided category or detect it automatically
+    if category is None:
+        category = detect_category(topic)
+        print(f"Detected category for '{topic}': {category}")
+    else:
+        print(f"Using provided category for '{topic}': {category}")
+
+    # Get category-specific search queries
+    category_queries = get_resource_queries_for_category(topic, category)
+
     # Generate search queries with language-specific terms if needed
     if language == "pt":
-        queries = [
+        language_queries = [
             f"{topic} tutorial",
             f"{topic} documentação",
             f"{topic} guia",
@@ -327,7 +440,7 @@ async def find_resources(topic: str, max_results: int = 15, language: str = "en"
             f"{topic} como aprender"
         ]
     elif language == "es":
-        queries = [
+        language_queries = [
             f"{topic} tutorial",
             f"{topic} documentación",
             f"{topic} guía",
@@ -337,7 +450,7 @@ async def find_resources(topic: str, max_results: int = 15, language: str = "en"
             f"{topic} cómo aprender"
         ]
     else:  # Default to English
-        queries = [
+        language_queries = [
             f"{topic} tutorial",
             f"{topic} documentation",
             f"{topic} guide",
@@ -346,6 +459,9 @@ async def find_resources(topic: str, max_results: int = 15, language: str = "en"
             f"{topic} video tutorial",
             f"{topic} how to learn"
         ]
+
+    # Combine category-specific and language-specific queries
+    queries = list(set(category_queries + language_queries))  # Remove duplicates
 
     all_results = []
 
@@ -361,7 +477,7 @@ async def find_resources(topic: str, max_results: int = 15, language: str = "en"
             unique_results[result['url']] = result
 
     # Scrape additional details for each result
-    resources = []
+    web_resources = []
 
     # Process the first few results with Puppeteer for JavaScript-heavy sites
     # Limit to fewer concurrent Puppeteer instances for better performance on Render
@@ -401,10 +517,37 @@ async def find_resources(topic: str, max_results: int = 15, language: str = "en"
             description=result.get('description', f"A resource about {topic}"),
             duration=result.get('duration'),
             readTime=result.get('readTime'),
-            difficulty="intermediate"  # Default difficulty
+            difficulty="intermediate",  # Default difficulty
+            thumbnail=result.get('thumbnail')  # Add thumbnail if available
         )
 
-        resources.append(resource)
+        web_resources.append(resource)
+
+    # Search for YouTube videos
+    print(f"Searching YouTube for '{topic}'...")
+    youtube_resources = await search_youtube_videos(topic, max_results=max_results // 3, language=language)
+    print(f"Found {len(youtube_resources)} YouTube videos for '{topic}'")
+
+    # Combine web and YouTube resources
+    all_resources = web_resources + youtube_resources
+
+    # Remove duplicates (by URL)
+    unique_resources = []
+    seen_urls = set()
+    for resource in all_resources:
+        if resource.url not in seen_urls:
+            unique_resources.append(resource)
+            seen_urls.add(resource.url)
+
+    # Filter resources by relevance to the topic
+    filtered_resources = filter_resources_by_relevance(unique_resources, topic, threshold=0.3, language=language)
+
+    # Log the filtering results
+    print(f"Filtered resources by relevance: {len(unique_resources)} -> {len(filtered_resources)}")
+
+    # Cache the results
+    result = filtered_resources[:max_results]
+    search_cache[cache_key] = result
 
     # Limit the number of resources
-    return resources[:max_results]
+    return result

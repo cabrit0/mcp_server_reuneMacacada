@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: mcp-server
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.9.0
+      - key: CACHE_ENABLED
+        value: "True"
+      - key: CACHE_MAX_SIZE
+        value: "50"
+      - key: LOG_LEVEL
+        value: "INFO"
+      - key: MAX_RESOURCES_DEFAULT
+        value: "15"
+      - key: MIN_NODES_DEFAULT
+        value: "15"
+      - key: DEFAULT_LANGUAGE
+        value: "pt"
+      - key: YOUTUBE_MAX_RESULTS
+        value: "5"

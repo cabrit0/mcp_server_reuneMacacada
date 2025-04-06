@@ -29,6 +29,7 @@ class Resource(BaseModel):
     duration: Optional[int] = None  # in minutes, for videos
     readTime: Optional[int] = None  # in minutes, for articles
     difficulty: Optional[str] = None
+    thumbnail: Optional[str] = None  # URL da imagem de thumbnail
 
 
 class Node(BaseModel):

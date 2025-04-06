@@ -24,6 +24,14 @@ Remoção da funcionalidade de detecção de conteúdo similar que estava impedi
 
 Implementação de otimizações para melhorar a performance do servidor no free tier do Render, incluindo sistema de cache em múltiplos níveis e otimizações de Puppeteer.
 
+### 6. [Relevância de Recursos e Distribuição de Quizzes](resource_relevance_and_quiz_distribution.md)
+
+Implementação de filtragem de recursos baseada em TF-IDF para garantir que os recursos correspondam ao tópico solicitado e distribuição estratégica de quizzes para uma experiência de aprendizagem mais equilibrada.
+
+### 7. [Integração com YouTube e Sistema de Categorias](youtube_integration.md)
+
+Implementação da integração com YouTube para incluir vídeos relevantes nos planos de aprendizagem e do sistema de categorias para gerar conteúdo mais específico para diferentes tipos de tópicos.
+
 ## Endpoints da API
 
 ### Verificação de Saúde
@@ -37,7 +45,7 @@ Retorna o status do servidor.
 ### Geração de MCP
 
 ```
-GET /generate_mcp?topic={topic}&max_resources={max_resources}&num_nodes={num_nodes}&language={language}
+GET /generate_mcp?topic={topic}&max_resources={max_resources}&num_nodes={num_nodes}&language={language}&category={category}
 ```
 
 Gera um plano de aprendizagem para o tópico especificado.
@@ -48,6 +56,7 @@ Gera um plano de aprendizagem para o tópico especificado.
 - `max_resources` (opcional): Número máximo de recursos a incluir (padrão: 15, mín: 5, máx: 30)
 - `num_nodes` (opcional): Número de nós a incluir no plano de aprendizagem (padrão: 15, mín: 10, máx: 30)
 - `language` (opcional): Idioma preferido para os recursos (padrão: "pt")
+- `category` (opcional): Categoria para o tópico (ex: "technology", "finance", "health"). Se não fornecido, será detectado automaticamente.
 
 ## Exemplos de Uso
 
@@ -73,4 +82,10 @@ GET /generate_mcp?topic=javascript&language=en
 
 ```
 GET /generate_mcp?topic=história+do+brasil&max_resources=20&num_nodes=25
+```
+
+### Exemplo 5: Gerar um MCP com categoria específica
+
+```
+GET /generate_mcp?topic=design&category=technology
 ```
