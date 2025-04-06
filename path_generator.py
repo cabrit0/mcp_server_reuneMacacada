@@ -106,7 +106,7 @@ def generate_subtopics(topic: str, count: int = 10) -> List[str]:
     return subtopics[:count]
 
 
-async def create_node_structure(topic: str, subtopics: List[str], resources: List[Resource], min_nodes: int = 15, max_nodes: int = 28, language: str = "pt") -> Tuple[Dict[str, Node], List[str]]:
+async def create_node_structure(topic: str, subtopics: List[str], resources: List[Resource], min_nodes: int = 15, max_nodes: int = 28, min_width: int = 3, max_width: int = 5, min_height: int = 3, max_height: int = 7, language: str = "pt") -> Tuple[Dict[str, Node], List[str]]:
     """
     Create a node structure with the given subtopics.
 
@@ -116,6 +116,11 @@ async def create_node_structure(topic: str, subtopics: List[str], resources: Lis
         resources: List of resources to distribute
         min_nodes: Minimum number of nodes
         max_nodes: Maximum number of nodes
+        min_width: Minimum width of the tree (nodes at first level)
+        max_width: Maximum width at any level of the tree
+        min_height: Minimum height of the tree (depth)
+        max_height: Maximum height of the tree (depth)
+        language: Language for resources
 
     Returns:
         Tuple of (nodes dictionary, list of node IDs)
@@ -123,7 +128,7 @@ async def create_node_structure(topic: str, subtopics: List[str], resources: Lis
     nodes: Dict[str, Node] = {}
     node_ids: List[str] = []
 
-    # Decide on a structure: more breadth or more depth
+    # Use the min_width and max_width parameters to control the tree structure
     # Higher value means more depth (longer paths), lower means more breadth (wider tree)
     depth_preference = random.uniform(0.3, 0.7)
 
@@ -152,8 +157,8 @@ async def create_node_structure(topic: str, subtopics: List[str], resources: Lis
     # Get remaining resources
     remaining_resources = [r for r in resources if r.id not in used_resource_ids]
 
-    # Create main branches
-    num_main_branches = random.randint(3, 5)  # 3-5 main branches
+    # Create main branches based on min_width and max_width
+    num_main_branches = random.randint(min_width, max_width)  # Use min_width and max_width
     main_branch_ids = []
 
     for i in range(num_main_branches):
@@ -199,15 +204,15 @@ async def create_node_structure(topic: str, subtopics: List[str], resources: Lis
 
     # For each main branch, create a path of nodes
     for branch_id in main_branch_ids:
-        # Decide how many nodes to create in this branch
+        # Decide how many nodes to create in this branch based on min_height and max_height
         if random.random() < depth_preference:
             # More depth - create a longer path
-            branch_length = random.randint(2, 4)  # 2-4 nodes in sequence
+            branch_length = random.randint(min_height - 1, max_height - 1)  # Adjust for height parameters
             branch_width = 1  # Just one path
         else:
             # More breadth - create a wider branch
-            branch_length = random.randint(1, 2)  # 1-2 levels
-            branch_width = random.randint(2, 3)  # 2-3 nodes per level
+            branch_length = random.randint(1, min_height)  # At least min_height levels
+            branch_width = random.randint(2, min(3, max_width))  # Control width with max_width
 
         # Create the nodes for this branch
         parent_ids = [branch_id]
@@ -317,13 +322,21 @@ async def create_node_structure(topic: str, subtopics: List[str], resources: Lis
     return nodes, node_ids
 
 
-async def generate_learning_path(topic: str, resources: List[Resource], min_nodes: int = 15, max_nodes: int = 28, category: Optional[str] = None, language: str = "pt") -> MCP:
+async def generate_learning_path(topic: str, resources: List[Resource], min_nodes: int = 15, max_nodes: int = 28, min_width: int = 3, max_width: int = 5, min_height: int = 3, max_height: int = 7, category: Optional[str] = None, language: str = "pt") -> MCP:
     """
     Generate a learning path based on a topic and a list of resources.
 
     Args:
         topic: The topic of the learning path
         resources: List of resources to include in the path
+        min_nodes: Minimum number of nodes in the learning path
+        max_nodes: Maximum number of nodes in the learning path
+        min_width: Minimum width of the tree (nodes at first level)
+        max_width: Maximum width at any level of the tree
+        min_height: Minimum height of the tree (depth)
+        max_height: Maximum height of the tree (depth)
+        category: Category for the topic (if None, will be detected automatically)
+        language: Language for resources (e.g., 'pt', 'en', 'es')
 
     Returns:
         MCP object representing the learning path
@@ -350,7 +363,13 @@ async def generate_learning_path(topic: str, resources: List[Resource], min_node
     subtopics = generate_subtopics(topic, num_subtopics)
 
     # Create node structure with randomness
-    nodes, node_ids = await create_node_structure(topic, subtopics, resources, min_nodes, max_nodes, language=language)
+    nodes, node_ids = await create_node_structure(
+        topic, subtopics, resources,
+        min_nodes=min_nodes, max_nodes=max_nodes,
+        min_width=min_width, max_width=max_width,
+        min_height=min_height, max_height=max_height,
+        language=language
+    )
 
     # Distribute quizzes strategically
     nodes = distribute_quizzes(nodes, node_ids, topic, resources, target_percentage=0.25)

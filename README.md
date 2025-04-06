@@ -72,13 +72,17 @@ A server that generates Master Content Plans (MCPs) based on topics. The server 
 ## API Endpoints
 
 - `GET /health` - Health check endpoint
-- `GET /generate_mcp?topic={topic}&max_resources={max_resources}&num_nodes={num_nodes}&language={language}&category={category}` - Generate an MCP for the specified topic synchronously
+- `GET /generate_mcp?topic={topic}&max_resources={max_resources}&num_nodes={num_nodes}&min_width={min_width}&max_width={max_width}&min_height={min_height}&max_height={max_height}&language={language}&category={category}` - Generate an MCP for the specified topic synchronously
   - `topic` (required): The topic to generate an MCP for (minimum 3 characters)
   - `max_resources` (optional): Maximum number of resources to include (default: 15, min: 5, max: 30)
   - `num_nodes` (optional): Number of nodes to include in the learning path (default: 15, min: 10, max: 30)
+  - `min_width` (optional): Minimum width of the tree (nodes at first level) (default: 3, min: 2, max: 10)
+  - `max_width` (optional): Maximum width at any level of the tree (default: 5, min: 3, max: 15)
+  - `min_height` (optional): Minimum height of the tree (depth) (default: 3, min: 2, max: 8)
+  - `max_height` (optional): Maximum height of the tree (depth) (default: 7, min: 3, max: 12)
   - `language` (optional): Language for resources (default: "pt")
   - `category` (optional): Category for the topic (e.g., "technology", "finance", "health"). If not provided, it will be detected automatically.
-- `POST /generate_mcp_async?topic={topic}&max_resources={max_resources}&num_nodes={num_nodes}&language={language}&category={category}` - Start asynchronous generation of an MCP
+- `POST /generate_mcp_async?topic={topic}&max_resources={max_resources}&num_nodes={num_nodes}&min_width={min_width}&max_width={max_width}&min_height={min_height}&max_height={max_height}&language={language}&category={category}` - Start asynchronous generation of an MCP
 - `GET /status/{task_id}` - Check the status of an asynchronous task
 - `GET /tasks` - List all tasks
 
@@ -111,7 +115,13 @@ GET /generate_mcp?topic=python&category=technology
 ### Full customization
 
 ```
-GET /generate_mcp?topic=história+do+brasil&max_resources=20&num_nodes=25&language=pt
+GET /generate_mcp?topic=história+do+brasil&max_resources=20&num_nodes=25&min_width=4&max_width=8&min_height=4&max_height=8&language=pt
+```
+
+### Control tree structure
+
+```
+GET /generate_mcp?topic=machine+learning&min_width=2&max_width=4&min_height=5&max_height=10
 ```
 
 ### Asynchronous generation

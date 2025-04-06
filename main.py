@@ -48,6 +48,10 @@ async def generate_mcp_endpoint(
     topic: str = Query(..., min_length=3, description="The topic to generate an MCP for"),
     max_resources: Optional[int] = Query(15, ge=5, le=30, description="Maximum number of resources to include"),
     num_nodes: Optional[int] = Query(15, ge=10, le=30, description="Number of nodes to include in the learning path"),
+    min_width: Optional[int] = Query(3, ge=2, le=10, description="Minimum width of the tree (nodes at first level)"),
+    max_width: Optional[int] = Query(5, ge=3, le=15, description="Maximum width at any level of the tree"),
+    min_height: Optional[int] = Query(3, ge=2, le=8, description="Minimum height of the tree (depth)"),
+    max_height: Optional[int] = Query(7, ge=3, le=12, description="Maximum height of the tree (depth)"),
     language: Optional[str] = Query("pt", description="Language for resources (e.g., 'pt', 'en', 'es')"),
     category: Optional[str] = Query(None, description="Category for the topic (e.g., 'technology', 'finance', 'health'). If not provided, it will be detected automatically.")
 ):
@@ -81,7 +85,13 @@ async def generate_mcp_endpoint(
         # Generate learning path
         logger.info(f"Generating learning path for topic: {topic} with {num_nodes} nodes")
         try:
-            mcp = await path_generator.generate_learning_path(topic, resources, min_nodes=num_nodes, max_nodes=num_nodes+10, category=category, language=language)
+            mcp = await path_generator.generate_learning_path(
+                topic, resources,
+                min_nodes=num_nodes, max_nodes=num_nodes+10,
+                min_width=min_width, max_width=max_width,
+                min_height=min_height, max_height=max_height,
+                category=category, language=language
+            )
 
             # Cache the result (limit cache size to 50 entries)
             if len(mcp_cache) >= 50:
@@ -107,6 +117,10 @@ async def generate_mcp_async_endpoint(
     topic: str = Query(..., min_length=3, description="The topic to generate an MCP for"),
     max_resources: Optional[int] = Query(15, ge=5, le=30, description="Maximum number of resources to include"),
     num_nodes: Optional[int] = Query(15, ge=10, le=30, description="Number of nodes to include in the learning path"),
+    min_width: Optional[int] = Query(3, ge=2, le=10, description="Minimum width of the tree (nodes at first level)"),
+    max_width: Optional[int] = Query(5, ge=3, le=15, description="Maximum width at any level of the tree"),
+    min_height: Optional[int] = Query(3, ge=2, le=8, description="Minimum height of the tree (depth)"),
+    max_height: Optional[int] = Query(7, ge=3, le=12, description="Maximum height of the tree (depth)"),
     language: Optional[str] = Query("pt", description="Language for resources (e.g., 'pt', 'en', 'es')"),
     category: Optional[str] = Query(None, description="Category for the topic (e.g., 'technology', 'finance', 'health'). If not provided, it will be detected automatically.")
 ):
@@ -121,7 +135,7 @@ async def generate_mcp_async_endpoint(
     logger.info(f"Received async request for topic: {topic}")
 
     # Check cache first
-    cache_key = f"{topic}_{max_resources}_{num_nodes}_{language}_{category}"
+    cache_key = f"{topic}_{max_resources}_{num_nodes}_{min_width}_{max_width}_{min_height}_{max_height}_{language}_{category}"
     if cache_key in mcp_cache:
         logger.info(f"Found cached MCP for topic: {topic}")
         # Create a completed task with the cached result
@@ -140,6 +154,10 @@ async def generate_mcp_async_endpoint(
         topic=topic,
         max_resources=max_resources,
         num_nodes=num_nodes,
+        min_width=min_width,
+        max_width=max_width,
+        min_height=min_height,
+        max_height=max_height,
         language=language,
         category=category
     )
@@ -181,6 +199,10 @@ async def process_mcp_generation(
     topic: str,
     max_resources: int,
     num_nodes: int,
+    min_width: int,
+    max_width: int,
+    min_height: int,
+    max_height: int,
     language: str,
     category: Optional[str] = None
 ):
@@ -220,12 +242,15 @@ async def process_mcp_generation(
         task.update_progress(50, "Gerando árvore de aprendizagem")
         try:
             mcp = await path_generator.generate_learning_path(
-                topic, resources, min_nodes=num_nodes, max_nodes=num_nodes+10,
+                topic, resources,
+                min_nodes=num_nodes, max_nodes=num_nodes+10,
+                min_width=min_width, max_width=max_width,
+                min_height=min_height, max_height=max_height,
                 category=category, language=language
             )
 
             # Cache the result
-            cache_key = f"{topic}_{max_resources}_{num_nodes}_{language}_{category}"
+            cache_key = f"{topic}_{max_resources}_{num_nodes}_{min_width}_{max_width}_{min_height}_{max_height}_{language}_{category}"
             if len(mcp_cache) >= 50:
                 oldest_key = next(iter(mcp_cache))
                 del mcp_cache[oldest_key]

@@ -23,7 +23,7 @@ Retorna o status do servidor.
 ### Geração de MCP (Síncrona)
 
 ```
-GET /generate_mcp?topic={topic}&max_resources={max_resources}&num_nodes={num_nodes}&language={language}&category={category}
+GET /generate_mcp?topic={topic}&max_resources={max_resources}&num_nodes={num_nodes}&min_width={min_width}&max_width={max_width}&min_height={min_height}&max_height={max_height}&language={language}&category={category}
 ```
 
 Gera um plano de aprendizagem para o tópico especificado de forma síncrona (aguarda a conclusão).
@@ -35,6 +35,10 @@ Gera um plano de aprendizagem para o tópico especificado de forma síncrona (ag
 | topic         | string  | Sim         | -      | O tópico para o qual gerar o plano de aprendizagem (mínimo 3 caracteres)                                           |
 | max_resources | integer | Não         | 15     | Número máximo de recursos a incluir (mín: 5, máx: 30)                                                              |
 | num_nodes     | integer | Não         | 15     | Número de nós a incluir no plano de aprendizagem (mín: 10, máx: 30)                                                |
+| min_width     | integer | Não         | 3      | Largura mínima da árvore (nós no primeiro nível) (mín: 2, máx: 10)                                                 |
+| max_width     | integer | Não         | 5      | Largura máxima em qualquer nível da árvore (mín: 3, máx: 15)                                                       |
+| min_height    | integer | Não         | 3      | Altura mínima da árvore (profundidade) (mín: 2, máx: 8)                                                            |
+| max_height    | integer | Não         | 7      | Altura máxima da árvore (profundidade) (mín: 3, máx: 12)                                                           |
 | language      | string  | Não         | "pt"   | Idioma preferido para os recursos (ex: "pt", "en", "es")                                                           |
 | category      | string  | Não         | null   | Categoria para o tópico (ex: "technology", "finance", "health"). Se não fornecido, será detectado automaticamente. |
 
@@ -95,7 +99,7 @@ Exemplo simplificado:
 ### Geração de MCP (Assíncrona)
 
 ```
-POST /generate_mcp_async?topic={topic}&max_resources={max_resources}&num_nodes={num_nodes}&language={language}&category={category}
+POST /generate_mcp_async?topic={topic}&max_resources={max_resources}&num_nodes={num_nodes}&min_width={min_width}&max_width={max_width}&min_height={min_height}&max_height={max_height}&language={language}&category={category}
 ```
 
 Inicia a geração de um plano de aprendizagem em segundo plano e retorna imediatamente com um ID de tarefa.
@@ -107,6 +111,10 @@ Inicia a geração de um plano de aprendizagem em segundo plano e retorna imedia
 | topic         | string  | Sim         | -      | O tópico para o qual gerar o plano de aprendizagem (mínimo 3 caracteres)                                           |
 | max_resources | integer | Não         | 15     | Número máximo de recursos a incluir (mín: 5, máx: 30)                                                              |
 | num_nodes     | integer | Não         | 15     | Número de nós a incluir no plano de aprendizagem (mín: 10, máx: 30)                                                |
+| min_width     | integer | Não         | 3      | Largura mínima da árvore (nós no primeiro nível) (mín: 2, máx: 10)                                                 |
+| max_width     | integer | Não         | 5      | Largura máxima em qualquer nível da árvore (mín: 3, máx: 15)                                                       |
+| min_height    | integer | Não         | 3      | Altura mínima da árvore (profundidade) (mín: 2, máx: 8)                                                            |
+| max_height    | integer | Não         | 7      | Altura máxima da árvore (profundidade) (mín: 3, máx: 12)                                                           |
 | language      | string  | Não         | "pt"   | Idioma preferido para os recursos (ex: "pt", "en", "es")                                                           |
 | category      | string  | Não         | null   | Categoria para o tópico (ex: "technology", "finance", "health"). Se não fornecido, será detectado automaticamente. |
 

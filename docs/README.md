@@ -49,7 +49,7 @@ Retorna o status do servidor.
 ### Geração de MCP (Síncrona)
 
 ```
-GET /generate_mcp?topic={topic}&max_resources={max_resources}&num_nodes={num_nodes}&language={language}&category={category}
+GET /generate_mcp?topic={topic}&max_resources={max_resources}&num_nodes={num_nodes}&min_width={min_width}&max_width={max_width}&min_height={min_height}&max_height={max_height}&language={language}&category={category}
 ```
 
 Gera um plano de aprendizagem para o tópico especificado de forma síncrona (aguarda a conclusão).
@@ -59,13 +59,17 @@ Gera um plano de aprendizagem para o tópico especificado de forma síncrona (ag
 - `topic` (obrigatório): O tópico para o qual gerar o plano de aprendizagem (mínimo 3 caracteres)
 - `max_resources` (opcional): Número máximo de recursos a incluir (padrão: 15, mín: 5, máx: 30)
 - `num_nodes` (opcional): Número de nós a incluir no plano de aprendizagem (padrão: 15, mín: 10, máx: 30)
+- `min_width` (opcional): Largura mínima da árvore (nós no primeiro nível) (padrão: 3, mín: 2, máx: 10)
+- `max_width` (opcional): Largura máxima em qualquer nível da árvore (padrão: 5, mín: 3, máx: 15)
+- `min_height` (opcional): Altura mínima da árvore (profundidade) (padrão: 3, mín: 2, máx: 8)
+- `max_height` (opcional): Altura máxima da árvore (profundidade) (padrão: 7, mín: 3, máx: 12)
 - `language` (opcional): Idioma preferido para os recursos (padrão: "pt")
 - `category` (opcional): Categoria para o tópico (ex: "technology", "finance", "health"). Se não fornecido, será detectado automaticamente.
 
 ### Geração de MCP (Assíncrona)
 
 ```
-POST /generate_mcp_async?topic={topic}&max_resources={max_resources}&num_nodes={num_nodes}&language={language}&category={category}
+POST /generate_mcp_async?topic={topic}&max_resources={max_resources}&num_nodes={num_nodes}&min_width={min_width}&max_width={max_width}&min_height={min_height}&max_height={max_height}&language={language}&category={category}
 ```
 
 Inicia a geração de um plano de aprendizagem em segundo plano e retorna imediatamente com um ID de tarefa.
