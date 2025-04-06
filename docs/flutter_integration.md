@@ -1136,6 +1136,269 @@ String _generateCacheKey(
 }
 ```
 
+## Sistema de Tarefas Assíncronas
+
+O MCP Server agora inclui um sistema de tarefas assíncronas que permite gerar planos de aprendizagem em segundo plano, melhorando significativamente a experiência do usuário. Este sistema é especialmente útil para tópicos complexos que podem levar mais tempo para serem processados.
+
+### Endpoints do Sistema de Tarefas
+
+1. **Criar uma Tarefa Assíncrona**:
+
+```
+POST /generate_mcp_async?topic={topic}&max_resources={max_resources}&num_nodes={num_nodes}&language={language}&category={category}
+```
+
+Este endpoint retorna imediatamente com um ID de tarefa, enquanto o processamento continua em segundo plano.
+
+2. **Verificar o Status de uma Tarefa**:
+
+```
+GET /status/{task_id}
+```
+
+Retorna informações detalhadas sobre o status da tarefa, incluindo progresso, mensagens e resultado (quando concluída).
+
+3. **Listar Todas as Tarefas**:
+
+```
+GET /tasks
+```
+
+Retorna uma lista de todas as tarefas no servidor.
+
+### Integração com Flutter
+
+Para integrar o sistema de tarefas assíncronas ao seu aplicativo Flutter, você pode implementar o seguinte serviço:
+
+```dart
+// lib/services/mcp_async_service.dart
+import 'dart:async';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import '../models/mcp.dart';
+
+class MCPAsyncService {
+  final String baseUrl;
+  final http.Client _client = http.Client();
+
+  MCPAsyncService({required this.baseUrl});
+
+  Future<String> startMCPGeneration({
+    required String topic,
+    int? maxResources,
+    int? numNodes,
+    String? language,
+    String? category,
+  }) async {
+    // Construir a URL com os parâmetros
+    final queryParams = {
+      'topic': topic,
+      if (maxResources != null) 'max_resources': maxResources.toString(),
+      if (numNodes != null) 'num_nodes': numNodes.toString(),
+      if (language != null) 'language': language,
+      if (category != null) 'category': category,
+    };
+
+    final uri = Uri.parse('$baseUrl/generate_mcp_async').replace(
+      queryParameters: queryParams,
+    );
+
+    try {
+      final response = await _client.post(uri);
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+        return jsonData['task_id'];
+      } else {
+        final errorData = json.decode(response.body);
+        throw Exception('Falha ao iniciar geração de MCP: ${errorData['detail'] ?? "Erro desconhecido"}');
+      }
+    } catch (e) {
+      throw Exception('Erro de conexão: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> checkTaskStatus(String taskId) async {
+    final uri = Uri.parse('$baseUrl/status/$taskId');
+
+    try {
+      final response = await _client.get(uri);
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        final errorData = json.decode(response.body);
+        throw Exception('Falha ao verificar status da tarefa: ${errorData['detail'] ?? "Erro desconhecido"}');
+      }
+    } catch (e) {
+      throw Exception('Erro de conexão: $e');
+    }
+  }
+
+  Future<MCP?> pollUntilComplete(String taskId, {int maxAttempts = 60, int delaySeconds = 5}) async {
+    int attempts = 0;
+
+    while (attempts < maxAttempts) {
+      try {
+        final status = await checkTaskStatus(taskId);
+
+        if (status['status'] == 'completed') {
+          // Tarefa concluída, converter resultado para MCP
+          return MCP.fromMap(status['result']);
+        } else if (status['status'] == 'failed') {
+          // Tarefa falhou
+          throw Exception('A geração do MCP falhou: ${status['error']}');
+        }
+
+        // Aguardar antes de verificar novamente
+        await Future.delayed(Duration(seconds: delaySeconds));
+        attempts++;
+      } catch (e) {
+        throw Exception('Erro ao verificar status da tarefa: $e');
+      }
+    }
+
+    throw Exception('Tempo limite excedido ao aguardar a conclusão da tarefa');
+  }
+
+  void dispose() {
+    _client.close();
+  }
+}
+```
+
+### Exemplo de Uso no Flutter
+
+```dart
+// Exemplo de uso em um widget
+Future<void> _generateMCPAsync() async {
+  setState(() {
+    _isLoading = true;
+    _progress = 0;
+    _statusMessage = 'Iniciando geração...';
+  });
+
+  try {
+    // Iniciar a geração assíncrona
+    final taskId = await _mcpAsyncService.startMCPGeneration(
+      topic: _topicController.text,
+      maxResources: _maxResources,
+      numNodes: _numNodes,
+      language: _selectedLanguage,
+      category: _selectedCategory,
+    );
+
+    // Configurar um timer para verificar o status periodicamente
+    Timer.periodic(Duration(seconds: 2), (timer) async {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+
+      try {
+        final status = await _mcpAsyncService.checkTaskStatus(taskId);
+
+        setState(() {
+          _progress = status['progress'];
+          if (status['messages'].isNotEmpty) {
+            _statusMessage = status['messages'].last['message'];
+          }
+        });
+
+        if (status['status'] == 'completed') {
+          // Tarefa concluída
+          timer.cancel();
+          final mcp = MCP.fromMap(status['result']);
+
+          // Armazenar em cache
+          await _cacheService.cacheMCP(
+            topic: _topicController.text,
+            numNodes: _numNodes,
+            maxResources: _maxResources,
+            language: _selectedLanguage,
+            category: _selectedCategory,
+            mcp: mcp,
+          );
+
+          setState(() {
+            _isLoading = false;
+            _generatedMCP = mcp;
+          });
+
+          // Navegar para a página de visualização do MCP
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => MCPViewPage(mcp: mcp),
+            ),
+          );
+        } else if (status['status'] == 'failed') {
+          // Tarefa falhou
+          timer.cancel();
+          setState(() {
+            _isLoading = false;
+            _errorMessage = 'Erro: ${status['error']}';
+          });
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(_errorMessage)),
+          );
+        }
+      } catch (e) {
+        timer.cancel();
+        setState(() {
+          _isLoading = false;
+          _errorMessage = e.toString();
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(_errorMessage)),
+        );
+      }
+    });
+  } catch (e) {
+    setState(() {
+      _isLoading = false;
+      _errorMessage = e.toString();
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(_errorMessage)),
+    );
+  }
+}
+```
+
+### Exibindo o Progresso
+
+Para melhorar a experiência do usuário, você pode exibir o progresso da geração do MCP:
+
+```dart
+// Adicione estas variáveis de estado na sua classe
+int _progress = 0;
+String _statusMessage = '';
+
+// Widget para exibir o progresso
+Widget _buildProgressIndicator() {
+  return Column(
+    children: [
+      LinearProgressIndicator(
+        value: _progress / 100,
+        backgroundColor: Colors.grey[300],
+        valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
+      ),
+      SizedBox(height: 8),
+      Text(
+        '$_progress%',
+        style: TextStyle(fontWeight: FontWeight.bold),
+      ),
+      SizedBox(height: 4),
+      Text(_statusMessage),
+    ],
+  );
+}
+```
+
 ## Conclusão
 
 A integração do MCP Server com Flutter permite criar aplicativos de aprendizagem ricos e personalizados. Com as novas funcionalidades do servidor, você pode:
@@ -1147,6 +1410,7 @@ A integração do MCP Server com Flutter permite criar aplicativos de aprendizag
 5. Incluir vídeos do YouTube com thumbnails para enriquecer o conteúdo
 6. Especificar categorias para obter planos de aprendizagem mais relevantes e específicos
 7. Aproveitar as otimizações de performance para uma experiência de usuário mais fluida
+8. **Utilizar o sistema de tarefas assíncronas para melhorar a experiência do usuário**
 
 ## Considerações para Implantação no Render
 
@@ -1161,5 +1425,7 @@ O MCP Server está hospedado no Render (https://reunemacacada.onrender.com), e h
 4. **Tratamento de Erros**: Implemente tratamento de erros robusto para lidar com possíveis falhas na API.
 
 5. **Modo Offline**: Considere implementar um modo offline que permita aos usuários acessar planos de aprendizagem previamente baixados.
+
+6. **Uso do Sistema Assíncrono**: Utilize o novo sistema de tarefas assíncronas para evitar timeouts e proporcionar uma melhor experiência ao usuário, especialmente para tópicos complexos.
 
 Seguindo estas recomendações, você pode proporcionar a melhor experiência possível aos usuários, mesmo com as limitações do free tier do Render.

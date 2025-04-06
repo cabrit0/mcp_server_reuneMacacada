@@ -1,5 +1,6 @@
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Any
 from pydantic import BaseModel, Field
+from enum import Enum
 
 
 class Question(BaseModel):
@@ -53,3 +54,38 @@ class MCP(BaseModel):
     rootNodeId: str
     nodes: Dict[str, Node]
     metadata: Metadata = Field(default_factory=Metadata)
+
+
+class TaskStatus(str, Enum):
+    """Status possíveis para uma tarefa."""
+    PENDING = "pending"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+class TaskMessage(BaseModel):
+    """Mensagem de progresso de uma tarefa."""
+    time: float
+    message: str
+
+
+class TaskInfo(BaseModel):
+    """Informações sobre uma tarefa assíncrona."""
+    id: str
+    description: str
+    status: TaskStatus
+    progress: int
+    result: Optional[Any] = None
+    error: Optional[str] = None
+    created_at: float
+    updated_at: float
+    completed_at: Optional[float] = None
+    messages: List[Dict[str, Any]] = []
+
+
+class TaskCreationResponse(BaseModel):
+    """Resposta para a criação de uma tarefa."""
+    task_id: str
+    status: str = "accepted"
+    message: str = "Task created successfully"
