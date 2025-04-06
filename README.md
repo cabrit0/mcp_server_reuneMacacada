@@ -69,6 +69,15 @@ A server that generates Master Content Plans (MCPs) based on topics. The server 
 
 4. Check the API documentation at `http://localhost:8000/docs`
 
+## Documentation
+
+Detailed documentation is available in the `docs` folder:
+
+- [API Reference](docs/api_reference.md) - Detailed API documentation
+- [Endpoints Reference](docs/endpoints_reference.md) - Complete reference of all endpoints
+- [Flutter Integration](docs/flutter_integration.md) - Guide for integrating with Flutter apps
+- [Async Tasks System](docs/async_tasks_system.md) - Documentation for the asynchronous task system
+
 ## API Endpoints
 
 - `GET /health` - Health check endpoint
@@ -159,4 +168,4 @@ This software is proprietary and confidential. Unauthorized copying, distributio
 
 © 2024 ReuneMacacada. All rights reserved.
 
-Last commit: v1.0.0 - Versão estável com integração YouTube, sistema de categorias e tarefas assíncronas
+Last commit: v1.0.6 - Versão estável com integração YouTube, sistema de categorias, tarefas assíncronas e controle de estrutura da árvore

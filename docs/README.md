@@ -36,6 +36,14 @@ Implementação da integração com YouTube para incluir vídeos relevantes nos 
 
 Implementação de um sistema de tarefas assíncronas com feedback de progresso em tempo real para melhorar a experiência do usuário e evitar timeouts em requisições longas.
 
+### 9. [Controle de Estrutura da Árvore](tree_structure_control.md)
+
+Implementação de parâmetros para controlar a estrutura da árvore de aprendizagem, incluindo largura e altura.
+
+### 10. [Referência de Endpoints](endpoints_reference.md)
+
+Referência completa de todos os endpoints disponíveis no MCP Server v1.0.6.
+
 ## Endpoints da API
 
 ### Verificação de Saúde

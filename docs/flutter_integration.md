@@ -1,6 +1,18 @@
 # Integração com Flutter
 
-Este documento explica como integrar o MCP Server com aplicações Flutter, considerando as novas funcionalidades implementadas.
+Este documento explica como integrar o MCP Server v1.0.6 com aplicações Flutter, considerando as novas funcionalidades implementadas.
+
+## Endpoints Disponíveis
+
+O MCP Server v1.0.6 oferece os seguintes endpoints:
+
+1. `GET /health` - Verificação de saúde do servidor
+2. `GET /generate_mcp` - Geração síncrona de MCP
+3. `POST /generate_mcp_async` - Geração assíncrona de MCP
+4. `GET /status/{task_id}` - Verifica o status de uma tarefa assíncrona
+5. `GET /tasks` - Lista todas as tarefas no servidor
+
+Para uma referência completa de todos os endpoints, parâmetros e respostas, consulte o documento [Endpoints Reference](endpoints_reference.md).
 
 ## Visão Geral
 
