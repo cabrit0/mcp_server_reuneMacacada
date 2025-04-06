@@ -44,6 +44,18 @@ Implementação de parâmetros para controlar a estrutura da árvore de aprendiz
 
 Referência completa de todos os endpoints disponíveis no MCP Server v1.0.6.
 
+### 11. [Melhorias de Performance](performance_improvements.md)
+
+Descrição das melhorias de performance implementadas e planejadas para o MCP Server.
+
+### 12. [Sistema de Cache](caching_system.md)
+
+Descrição do sistema de cache implementado no MCP Server para melhorar a performance.
+
+### 13. [Otimização de Web Scraping](web_scraping_optimization.md)
+
+Descrição das técnicas e estratégias de otimização de web scraping implementadas e planejadas.
+
 ## Endpoints da API
 
 ### Verificação de Saúde

@@ -41,6 +41,29 @@ Thumbs.db
 *.json
 *.log
 tmp/
+temp/
+.cache/
 
 # Arquivos de teste
 test_*.py
+test_server.py
+
+# Redis
+dump.rdb
+*.rdb
+redis-data/
+
+# Arquivos específicos do projeto
+.pytest_cache/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.coverage
+htmlcov/
+
+# Arquivos de configuração local
+.env.local
+.env.development
+.env.test
+.env.production

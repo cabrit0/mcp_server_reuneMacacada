@@ -12,3 +12,7 @@ yt-dlp>=2023.7.6
 pydantic>=2.0.0
 aiohttp>=3.8.0
 rich>=12.0.0
+
+# Novas dependências para otimizações de performance
+redis>=5.0.0
+msgpack>=1.0.5

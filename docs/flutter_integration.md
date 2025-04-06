@@ -1,10 +1,10 @@
 # Integração com Flutter
 
-Este documento explica como integrar o MCP Server v1.0.6 com aplicações Flutter, considerando as novas funcionalidades implementadas.
+Este documento explica como integrar o MCP Server v1.0.7 com aplicações Flutter, considerando as novas funcionalidades implementadas.
 
 ## Endpoints Disponíveis
 
-O MCP Server v1.0.6 oferece os seguintes endpoints:
+O MCP Server v1.0.7 oferece os seguintes endpoints:
 
 1. `GET /health` - Verificação de saúde do servidor
 2. `GET /generate_mcp` - Geração síncrona de MCP
@@ -17,6 +17,22 @@ Para uma referência completa de todos os endpoints, parâmetros e respostas, co
 ## Visão Geral
 
 O MCP Server fornece uma API RESTful que pode ser facilmente consumida por aplicações Flutter. A integração permite que sua aplicação Flutter gere planos de aprendizagem personalizados para qualquer tópico, com suporte para múltiplos idiomas e personalização do número de nós.
+
+## URL Base
+
+### Produção
+
+```
+https://reunemacacada.onrender.com
+```
+
+### Desenvolvimento Local
+
+```
+http://localhost:8000
+```
+
+> **Nota:** Todos os endpoints documentados neste documento estão disponíveis em ambos os URLs. Use o URL de produção para aplicações em produção e o URL local para desenvolvimento e testes.
 
 ## Configuração no Flutter
 
@@ -190,9 +206,25 @@ import 'package:http/http.dart' as http;
 import '../models/mcp.dart';
 
 class MCPService {
+  // URL base do servidor - pode ser alterada entre produção e desenvolvimento
+  // Produção: https://reunemacacada.onrender.com
+  // Desenvolvimento: http://localhost:8000
   final String baseUrl;
 
-  MCPService({required this.baseUrl});
+  MCPService({
+    // Por padrão, usa o servidor de produção
+    this.baseUrl = 'https://reunemacacada.onrender.com',
+  });
+
+  // Construtor alternativo para ambiente de desenvolvimento
+  MCPService.development()
+      : baseUrl = 'http://localhost:8000';
+
+  // Construtor para permitir configuração dinâmica
+  MCPService.fromEnvironment(bool isProduction)
+      : baseUrl = isProduction
+            ? 'https://reunemacacada.onrender.com'
+            : 'http://localhost:8000';
 
   Future<MCP> generateMCP({
     required String topic,
@@ -1182,6 +1214,8 @@ Retorna uma lista de todas as tarefas no servidor.
 
 Para integrar o sistema de tarefas assíncronas ao seu aplicativo Flutter, você pode implementar o seguinte serviço:
 
+> **Nota:** O serviço pode ser configurado para usar tanto o servidor de produção quanto o servidor local para desenvolvimento e testes.
+
 ```dart
 // lib/services/mcp_async_service.dart
 import 'dart:async';
@@ -1190,10 +1224,28 @@ import 'package:http/http.dart' as http;
 import '../models/mcp.dart';
 
 class MCPAsyncService {
+  // URL base do servidor - pode ser alterada entre produção e desenvolvimento
+  // Produção: https://reunemacacada.onrender.com
+  // Desenvolvimento: http://localhost:8000
   final String baseUrl;
   final http.Client _client = http.Client();
 
-  MCPAsyncService({required this.baseUrl});
+  MCPAsyncService({
+    // Por padrão, usa o servidor de produção
+    this.baseUrl = 'https://reunemacacada.onrender.com',
+  });
+
+  // Construtor alternativo para ambiente de desenvolvimento
+  MCPAsyncService.development()
+      : baseUrl = 'http://localhost:8000',
+        _client = http.Client();
+
+  // Construtor para permitir configuração dinâmica
+  MCPAsyncService.fromEnvironment(bool isProduction)
+      : baseUrl = isProduction
+            ? 'https://reunemacacada.onrender.com'
+            : 'http://localhost:8000',
+        _client = http.Client();
 
   Future<String> startMCPGeneration({
     required String topic,
@@ -1379,6 +1431,25 @@ Future<void> _generateMCPAsync() async {
     );
   }
 }
+```
+
+### Configurando o Serviço para Diferentes Ambientes
+
+Você pode configurar o serviço para usar diferentes URLs base dependendo do ambiente:
+
+```dart
+// Usando o construtor padrão (produção)
+final mcpAsyncService = MCPAsyncService();
+
+// Usando o construtor para desenvolvimento
+final mcpAsyncServiceDev = MCPAsyncService.development();
+
+// Usando o construtor com configuração dinâmica
+final isProduction = false; // Defina com base em alguma configuração do app
+final mcpAsyncServiceDynamic = MCPAsyncService.fromEnvironment(isProduction);
+
+// Usando o construtor com URL personalizada
+final mcpAsyncServiceCustom = MCPAsyncService(baseUrl: 'http://192.168.1.100:8000');
 ```
 
 ### Exibindo o Progresso

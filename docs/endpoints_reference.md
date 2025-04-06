@@ -1,12 +1,22 @@
 # MCP Server API Endpoints Reference
 
-Este documento contém uma referência completa de todos os endpoints disponíveis no MCP Server v1.0.6.
+Este documento contém uma referência completa de todos os endpoints disponíveis no MCP Server v1.0.7.
 
 ## URL Base
+
+### Produção
 
 ```
 https://reunemacacada.onrender.com
 ```
+
+### Desenvolvimento Local
+
+```
+http://localhost:8000
+```
+
+> **Nota:** Todos os endpoints documentados neste documento estão disponíveis em ambos os URLs. Use o URL de produção para aplicações em produção e o URL local para desenvolvimento e testes.
 
 ## Endpoints Disponíveis
 
@@ -19,6 +29,7 @@ GET /health
 Retorna o status do servidor.
 
 **Resposta de Sucesso:**
+
 ```json
 {
   "status": "ok"
@@ -50,6 +61,7 @@ Gera um plano de aprendizagem para o tópico especificado de forma síncrona (ag
 **Resposta de Sucesso:**
 
 A resposta é um objeto JSON com a estrutura MCP completa, incluindo:
+
 - ID único
 - Título e descrição
 - ID do nó raiz
@@ -58,12 +70,12 @@ A resposta é um objeto JSON com a estrutura MCP completa, incluindo:
 
 **Códigos de Status:**
 
-| Código | Descrição                                |
-| ------ | ---------------------------------------- |
-| 200    | Sucesso                                  |
+| Código | Descrição                                 |
+| ------ | ----------------------------------------- |
+| 200    | Sucesso                                   |
 | 400    | Parâmetros inválidos ou erro de validação |
-| 404    | Recursos não encontrados para o tópico   |
-| 500    | Erro interno do servidor                 |
+| 404    | Recursos não encontrados para o tópico    |
+| 500    | Erro interno do servidor                  |
 
 ### 3. Geração de MCP (Assíncrona)
 
@@ -89,11 +101,11 @@ Os mesmos parâmetros do endpoint síncrono.
 
 **Códigos de Status:**
 
-| Código | Descrição                                |
-| ------ | ---------------------------------------- |
-| 200    | Sucesso                                  |
+| Código | Descrição                                 |
+| ------ | ----------------------------------------- |
+| 200    | Sucesso                                   |
 | 400    | Parâmetros inválidos ou erro de validação |
-| 500    | Erro interno do servidor                 |
+| 500    | Erro interno do servidor                  |
 
 ### 4. Verificar Status da Tarefa
 
@@ -105,8 +117,8 @@ Retorna informações detalhadas sobre o status de uma tarefa, incluindo progres
 
 **Parâmetros:**
 
-| Parâmetro | Tipo   | Obrigatório | Descrição           |
-| --------- | ------ | ----------- | ------------------- |
+| Parâmetro | Tipo   | Obrigatório | Descrição                  |
+| --------- | ------ | ----------- | -------------------------- |
 | task_id   | string | Sim         | O ID da tarefa a verificar |
 
 **Resposta de Sucesso (Tarefa em Execução):**
@@ -162,11 +174,11 @@ Retorna informações detalhadas sobre o status de uma tarefa, incluindo progres
 
 **Códigos de Status:**
 
-| Código | Descrição                                |
-| ------ | ---------------------------------------- |
-| 200    | Sucesso                                  |
-| 404    | Tarefa não encontrada                    |
-| 500    | Erro interno do servidor                 |
+| Código | Descrição                |
+| ------ | ------------------------ |
+| 200    | Sucesso                  |
+| 404    | Tarefa não encontrada    |
+| 500    | Erro interno do servidor |
 
 ### 5. Listar Tarefas
 
@@ -203,10 +215,42 @@ Retorna uma lista de todas as tarefas no servidor.
 
 **Códigos de Status:**
 
-| Código | Descrição                                |
-| ------ | ---------------------------------------- |
-| 200    | Sucesso                                  |
-| 500    | Erro interno do servidor                 |
+| Código | Descrição                |
+| ------ | ------------------------ |
+| 200    | Sucesso                  |
+| 500    | Erro interno do servidor |
+
+### 6. Limpar Cache
+
+```
+POST /clear_cache?pattern={pattern}
+```
+
+Limpa o cache do servidor com base em um padrão de correspondência.
+
+**Parâmetros:**
+
+| Parâmetro | Tipo   | Obrigatório | Descrição                                                                                                                                               |
+| --------- | ------ | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| pattern   | string | Não         | Padrão para correspondência de chaves. Padrão é "_" que limpa todo o cache. Exemplos: "mcp:_" para todos os MCPs, "search:\*" para resultados de busca. |
+
+**Resposta de Sucesso:**
+
+```json
+{
+  "status": "success",
+  "message": "Cleared 15 items from cache",
+  "pattern": "mcp:*",
+  "count": 15
+}
+```
+
+**Códigos de Status:**
+
+| Código | Descrição                |
+| ------ | ------------------------ |
+| 200    | Sucesso                  |
+| 500    | Erro interno do servidor |
 
 ## Exemplos de Uso
 
@@ -246,7 +290,19 @@ GET /generate_mcp?topic=história+do+brasil&min_width=4&max_width=8&min_height=4
 POST /generate_mcp_async?topic=inteligência+artificial&category=technology
 ```
 
-### Exemplo 7: Verificar o status de uma tarefa
+### Exemplo 7: Limpar todo o cache
+
+```
+POST /clear_cache
+```
+
+### Exemplo 8: Limpar apenas o cache de MCPs
+
+```
+POST /clear_cache?pattern=mcp:*
+```
+
+### Exemplo 9: Verificar o status de uma tarefa
 
 ```
 GET /status/550e8400-e29b-41d4-a716-446655440000

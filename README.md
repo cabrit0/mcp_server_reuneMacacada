@@ -16,6 +16,8 @@ A server that generates Master Content Plans (MCPs) based on topics. The server 
 - **NEW**: YouTube integration to include relevant videos in learning paths
 - **NEW**: Category system to generate more specific content for different types of topics
 - **NEW**: Asynchronous task system with real-time progress feedback to improve user experience and avoid timeouts
+- **NEW**: Enhanced caching system for improved performance and faster response times
+- **NEW**: Optimized web scraping techniques for better resource utilization
 
 ## Tech Stack
 
@@ -26,6 +28,8 @@ A server that generates Master Content Plans (MCPs) based on topics. The server 
 - BeautifulSoup for HTML parsing
 - scikit-learn for TF-IDF based resource relevance filtering
 - yt-dlp for YouTube video search and metadata extraction
+- Redis (optional) for distributed caching
+- msgpack for efficient data serialization
 
 ## Installation
 
@@ -53,10 +57,18 @@ A server that generates Master Content Plans (MCPs) based on topics. The server 
 
 ## Usage
 
-1. Start the server:
+### Running Locally
+
+1. Start the server using the provided batch file (Windows):
 
    ```
-   uvicorn main:app --reload
+   run_local.bat
+   ```
+
+   Or manually with uvicorn:
+
+   ```
+   uvicorn main:app --reload --host 0.0.0.0 --port 8000
    ```
 
 2. Access the API at `http://localhost:8000`
@@ -69,6 +81,32 @@ A server that generates Master Content Plans (MCPs) based on topics. The server 
 
 4. Check the API documentation at `http://localhost:8000/docs`
 
+### Production URL
+
+The production server is available at:
+
+```
+https://reunemacacada.onrender.com
+```
+
+All endpoints documented in this README are available at both the local and production URLs.
+
+### Testing the Caching System
+
+1. Make a first request to generate an MCP (this will populate the cache):
+
+   ```
+   GET /generate_mcp?topic=python&num_nodes=15&language=pt
+   ```
+
+2. Make a second request with the same parameters (this should use the cache):
+
+   ```
+   GET /generate_mcp?topic=python&num_nodes=15&language=pt
+   ```
+
+   The second request should be significantly faster as the result will be retrieved from the cache.
+
 ## Documentation
 
 Detailed documentation is available in the `docs` folder:
@@ -77,6 +115,9 @@ Detailed documentation is available in the `docs` folder:
 - [Endpoints Reference](docs/endpoints_reference.md) - Complete reference of all endpoints
 - [Flutter Integration](docs/flutter_integration.md) - Guide for integrating with Flutter apps
 - [Async Tasks System](docs/async_tasks_system.md) - Documentation for the asynchronous task system
+- [Performance Improvements](docs/performance_improvements.md) - Overview of performance optimizations
+- [Caching System](docs/caching_system.md) - Documentation for the caching system
+- [Web Scraping Optimization](docs/web_scraping_optimization.md) - Details on web scraping optimizations
 
 ## API Endpoints
 
@@ -94,6 +135,7 @@ Detailed documentation is available in the `docs` folder:
 - `POST /generate_mcp_async?topic={topic}&max_resources={max_resources}&num_nodes={num_nodes}&min_width={min_width}&max_width={max_width}&min_height={min_height}&max_height={max_height}&language={language}&category={category}` - Start asynchronous generation of an MCP
 - `GET /status/{task_id}` - Check the status of an asynchronous task
 - `GET /tasks` - List all tasks
+- `POST /clear_cache?pattern={pattern}` - Clear the cache based on a pattern (e.g., "mcp:_" for all MCPs, "_" for all)
 
 ## Examples
 
@@ -145,6 +187,18 @@ POST /generate_mcp_async?topic=inteligência+artificial&category=technology
 GET /status/550e8400-e29b-41d4-a716-446655440000
 ```
 
+### Clear cache
+
+```
+POST /clear_cache
+```
+
+### Clear specific cache
+
+```
+POST /clear_cache?pattern=mcp:*
+```
+
 ## Deployment
 
 The server can be deployed to various platforms:
@@ -168,4 +222,4 @@ This software is proprietary and confidential. Unauthorized copying, distributio
 
 © 2024 ReuneMacacada. All rights reserved.
 
-Last commit: v1.0.6 - Versão estável com integração YouTube, sistema de categorias, tarefas assíncronas e controle de estrutura da árvore
+Last commit: v1.0.7 - Versão estável com sistema de cache otimizado, documentação de otimizações de performance e melhorias no web scraping

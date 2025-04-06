@@ -8,6 +8,8 @@ import content_sourcing
 import path_generator
 from schemas import MCP, TaskInfo, TaskCreationResponse
 from task_manager import task_manager
+from simple_cache import simple_cache
+import config
 
 # Configure logging
 logging.basicConfig(
@@ -17,8 +19,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger("mcp_server")
 
-# Simple MCP cache to improve performance
-mcp_cache = {}
+# Usando o cache distribuído em vez do cache simples em memória
 
 # Create FastAPI app
 app = FastAPI(
@@ -67,10 +68,11 @@ async def generate_mcp_endpoint(
         logger.info(f"Received request for topic: {topic}")
 
         # Check cache first
-        cache_key = f"{topic}_{max_resources}_{num_nodes}_{language}_{category}"
-        if cache_key in mcp_cache:
+        cache_key = f"mcp:{topic}_{max_resources}_{num_nodes}_{language}_{category}"
+        cached_mcp = simple_cache.get(cache_key)
+        if cached_mcp:
             logger.info(f"Returning cached MCP for topic: {topic}")
-            return mcp_cache[cache_key]
+            return MCP(**cached_mcp)
 
         # Find resources
         logger.info(f"Finding resources for topic: {topic} in language: {language}")
@@ -93,12 +95,8 @@ async def generate_mcp_endpoint(
                 category=category, language=language
             )
 
-            # Cache the result (limit cache size to 50 entries)
-            if len(mcp_cache) >= 50:
-                # Remove oldest entry
-                oldest_key = next(iter(mcp_cache))
-                del mcp_cache[oldest_key]
-            mcp_cache[cache_key] = mcp
+            # Cache the result
+            simple_cache.setex(cache_key, 2592000, mcp.model_dump())  # 30 dias
         except ValueError as ve:
             logger.warning(f"Could not generate enough nodes: {str(ve)}")
             raise HTTPException(status_code=400, detail=str(ve))
@@ -135,13 +133,14 @@ async def generate_mcp_async_endpoint(
     logger.info(f"Received async request for topic: {topic}")
 
     # Check cache first
-    cache_key = f"{topic}_{max_resources}_{num_nodes}_{min_width}_{max_width}_{min_height}_{max_height}_{language}_{category}"
-    if cache_key in mcp_cache:
+    cache_key = f"mcp:{topic}_{max_resources}_{num_nodes}_{min_width}_{max_width}_{min_height}_{max_height}_{language}_{category}"
+    cached_mcp = simple_cache.get(cache_key)
+    if cached_mcp:
         logger.info(f"Found cached MCP for topic: {topic}")
         # Create a completed task with the cached result
         task = task_manager.create_task(f"Generate MCP for topic: {topic}")
-        # Usar dict() para compatibilidade com versões mais antigas do Pydantic
-        task.mark_as_completed(mcp_cache[cache_key].dict())
+        # Usar o resultado do cache diretamente
+        task.mark_as_completed(cached_mcp)
         return TaskCreationResponse(task_id=task.id, message="Task completed immediately (cached result)")
 
     # Create a new task
@@ -192,6 +191,34 @@ async def list_tasks():
         List of all tasks
     """
     return [task.to_dict() for task in task_manager.tasks.values()]
+
+
+@app.post("/clear_cache")
+async def clear_cache(pattern: Optional[str] = Query("*", description="Pattern to match cache keys (e.g., 'mcp:*' for all MCPs, 'search:*' for all search results, '*' for all)")):
+    """
+    Clear the cache.
+
+    This endpoint allows clearing the cache based on a pattern. Use with caution as it will remove cached data.
+
+    Args:
+        pattern: Pattern to match cache keys. Default is "*" which clears all cache.
+                Examples: "mcp:*" for all MCPs, "search:*" for all search results.
+
+    Returns:
+        Dictionary with count of items cleared and message.
+    """
+    try:
+        count = simple_cache.clear(pattern)
+        logger.info(f"Cleared {count} items from cache matching pattern: {pattern}")
+        return {
+            "status": "success",
+            "message": f"Cleared {count} items from cache",
+            "pattern": pattern,
+            "count": count
+        }
+    except Exception as e:
+        logger.error(f"Error clearing cache: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error clearing cache: {str(e)}")
 
 
 async def process_mcp_generation(
@@ -250,17 +277,14 @@ async def process_mcp_generation(
             )
 
             # Cache the result
-            cache_key = f"{topic}_{max_resources}_{num_nodes}_{min_width}_{max_width}_{min_height}_{max_height}_{language}_{category}"
-            if len(mcp_cache) >= 50:
-                oldest_key = next(iter(mcp_cache))
-                del mcp_cache[oldest_key]
-            mcp_cache[cache_key] = mcp
+            cache_key = f"mcp:{topic}_{max_resources}_{num_nodes}_{min_width}_{max_width}_{min_height}_{max_height}_{language}_{category}"
+            simple_cache.setex(cache_key, 2592000, mcp.model_dump())  # 30 dias
 
             task.update_progress(90, "Finalizando geração do MCP")
 
             # Mark task as completed with the MCP as result
-            # Usar dict() para compatibilidade com versões mais antigas do Pydantic
-            task.mark_as_completed(mcp.dict())
+            # Usar model_dump() para compatibilidade com versões mais recentes do Pydantic
+            task.mark_as_completed(mcp.model_dump())
             logger.info(f"Task {task_id} completed successfully")
 
         except ValueError as ve:
@@ -274,4 +298,19 @@ async def process_mcp_generation(
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+
+    # Use configurações do arquivo config.py
+    port = config.PORT
+    debug = config.DEBUG
+
+    print(f"Iniciando MCP Server na porta {port}")
+    print(f"URL base: {config.BASE_URL}")
+    print(f"Modo de depuração: {'Ativado' if debug else 'Desativado'}")
+    print("")
+    print("O servidor estará disponível em:")
+    print(f"  - Local: http://localhost:{port}")
+    print(f"  - Rede: http://0.0.0.0:{port}")
+    print("")
+    print("Pressione Ctrl+C para encerrar o servidor")
+
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=debug)

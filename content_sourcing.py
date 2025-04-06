@@ -1,114 +1,81 @@
 import asyncio
 import re
 import uuid
-from typing import List, Dict, Any, Optional, Tuple, Union
+import logging
+from typing import List, Dict, Any, Optional, Tuple
 from urllib.parse import urlparse
 
 import requests
 from bs4 import BeautifulSoup
 from duckduckgo_search import DDGS
-from pyppeteer import launch
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
 from schemas import Resource
 from categories import detect_category, get_resource_queries_for_category
 from youtube_integration import search_youtube_videos
+from simple_cache import simple_cache
 
-# Simple cache for search results and scraped content
-search_cache = {}
-scrape_cache = {}
+# Importações para o scraper otimizado
+import content_scraper
+
+# Configure logging
+logger = logging.getLogger("mcp_server.content_sourcing")
 
 # Maximum cache sizes to prevent memory issues
 MAX_CACHE_SIZE = 100
 MAX_PUPPETEER_INSTANCES = 2  # Limit concurrent Puppeteer instances for Render's free tier
 
+# Simple cache for scraped content (will be migrated to distributed cache)
+scrape_cache = {}
+search_cache = {}
 
-async def scrape_with_puppeteer(url: str, topic: str, timeout: int = 15) -> Dict[str, Any]:
+
+async def scrape_with_optimized_scraper(url: str, topic: str, timeout: int = 15) -> Dict[str, Any]:
     """
-    Scrape content from JavaScript-heavy websites using Puppeteer.
+    Scrape content from websites using the optimized scraper.
 
     Args:
-        url: The URL to scrape
-        topic: The topic to search for
+        url: URL to scrape
+        topic: Topic being searched for
+        timeout: Timeout in seconds
 
     Returns:
-        Dictionary with title, description, and other metadata
+        Dictionary with title, description, and content type
     """
-    browser = await launch(headless=True)
-    page = await browser.newPage()
-
-    # Set a user agent to identify the bot
-    await page.setUserAgent('MCPBot/1.0 (+https://mcp-server.example.com/bot-info)')
+    # Check cache first
+    cache_key = f"resource:{url}"
+    cached_result = simple_cache.get(cache_key)
+    if cached_result:
+        logger.info(f"Using cached resource for {url}")
+        return cached_result
 
     try:
-        # Check cache first
-        cache_key = f"puppeteer_{url}"
-        if cache_key in scrape_cache:
-            await browser.close()
-            return scrape_cache[cache_key]
+        # Use the optimized scraper from content_scraper.py
 
-        # Navigate to the URL with a shorter timeout for Render's free tier
-        try:
-            await asyncio.wait_for(
-                page.goto(url, {'waitUntil': 'networkidle2'}),
-                timeout=timeout
-            )
-        except asyncio.TimeoutError:
-            print(f"Timeout while loading {url}")
-            # Continue with partial content if available
+        # Get HTML content
+        html_content = await content_scraper.scrape_url(url, timeout)
 
-        # Extract title
-        title = await page.title()
+        if not html_content:
+            raise Exception("Failed to load page content")
 
-        # Extract description from meta tags or first paragraph
-        description = await page.evaluate('''() => {
-            const metaDesc = document.querySelector('meta[name="description"]');
-            if (metaDesc) return metaDesc.getAttribute('content');
+        # Extract metadata
+        result = content_scraper.extract_metadata_from_html(html_content, url, topic)
 
-            const firstPara = document.querySelector('p');
-            if (firstPara) return firstPara.textContent.trim();
+        # Cache the result
+        simple_cache.setex(cache_key, 604800, result)  # 1 semana
 
-            return '';
-        }''')
+        return result
 
-        # Determine content type based on URL and page content
-        content_type = await determine_content_type(page, url)
-
-        # Estimate read time based on content length
-        content_length = await page.evaluate('document.body.innerText.length')
-        read_time = estimate_read_time(content_length)
-
-        result = {
-            'title': title,
-            'url': url,
-            'description': description[:200] + '...' if len(description) > 200 else description,
-            'type': content_type,
-            'readTime': read_time if content_type == 'article' else None,
-            'duration': read_time if content_type == 'video' else None
-        }
-
-        # Cache the result with size limit
-        scrape_cache[cache_key] = result
-
-        # Trim cache if it gets too large
-        if len(scrape_cache) > MAX_CACHE_SIZE:
-            # Remove oldest entries (first 10%)
-            keys_to_remove = list(scrape_cache.keys())[:MAX_CACHE_SIZE // 10]
-            for key in keys_to_remove:
-                del scrape_cache[key]
     except Exception as e:
-        print(f"Error scraping {url} with Puppeteer: {e}")
+        logger.warning(f"Error scraping {url}: {str(e)}")
         result = {
             'title': f"Resource about {topic}",
             'url': url,
             'description': f"A resource about {topic}",
             'type': 'unknown'
         }
-    finally:
-        await browser.close()
-
-    return result
+        return result
 
 
 async def determine_content_type(page, url: str) -> str:
@@ -413,9 +380,11 @@ async def find_resources(topic: str, max_results: int = 15, language: str = "pt"
         List of Resource objects
     """
     # Check cache first
-    cache_key = f"{topic}_{max_results}_{language}_{category}"
-    if cache_key in search_cache:
-        return search_cache[cache_key]
+    cache_key = f"search:{topic}_{max_results}_{language}_{category}"
+    cached_results = simple_cache.get(cache_key)
+    if cached_results:
+        logger.info(f"Found cached search results for topic: {topic}")
+        return [Resource(**r) for r in cached_results]
 
     # Use provided category or detect it automatically
     if category is None:
@@ -479,26 +448,19 @@ async def find_resources(topic: str, max_results: int = 15, language: str = "pt"
     # Scrape additional details for each result
     web_resources = []
 
-    # Process the first few results with Puppeteer for JavaScript-heavy sites
-    # Limit to fewer concurrent Puppeteer instances for better performance on Render
-    puppeteer_tasks = []
-    for i, (url, result) in enumerate(list(unique_results.items())[:MAX_PUPPETEER_INSTANCES]):
-        puppeteer_tasks.append(scrape_with_puppeteer(url, topic, timeout=8))
+    # Process all results with the optimized scraper
+    scraper_tasks = []
+    for url, result in unique_results.items():
+        scraper_tasks.append(scrape_with_optimized_scraper(url, topic, timeout=8))
 
-    # Run Puppeteer tasks concurrently
-    if puppeteer_tasks:
-        puppeteer_results = await asyncio.gather(*puppeteer_tasks, return_exceptions=True)
+    # Run scraper tasks concurrently
+    if scraper_tasks:
+        scraper_results = await asyncio.gather(*scraper_tasks, return_exceptions=True)
 
-        # Update results with Puppeteer data
-        for i, (url, _) in enumerate(list(unique_results.items())[:5]):
-            if i < len(puppeteer_results) and not isinstance(puppeteer_results[i], Exception):
-                unique_results[url].update(puppeteer_results[i])
-
-    # Process remaining results with BeautifulSoup
-    for url, result in list(unique_results.items())[MAX_PUPPETEER_INSTANCES:]:
-        scraped_data = scrape_basic_site(url, topic, language=language)
-        if scraped_data:
-            unique_results[url].update(scraped_data)
+        # Update results with scraped data
+        for i, (url, _) in enumerate(unique_results.items()):
+            if i < len(scraper_results) and not isinstance(scraper_results[i], Exception):
+                unique_results[url].update(scraper_results[i])
 
         # Add a small delay to avoid overwhelming the server
         await asyncio.sleep(0.05)  # Reduced delay for better performance
@@ -546,8 +508,8 @@ async def find_resources(topic: str, max_results: int = 15, language: str = "pt"
     print(f"Filtered resources by relevance: {len(unique_resources)} -> {len(filtered_resources)}")
 
     # Cache the results
-    result = filtered_resources[:max_results]
-    search_cache[cache_key] = result
+    simple_cache.setex(cache_key, 86400, [r.model_dump() for r in filtered_resources])  # 1 dia
 
     # Limit the number of resources
+    result = filtered_resources[:max_results]
     return result
