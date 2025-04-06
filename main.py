@@ -25,7 +25,7 @@ logger = logging.getLogger("mcp_server")
 app = FastAPI(
     title="MCP Server",
     description="Server that generates Master Content Plans (MCPs) based on topics",
-    version="1.1.1"
+    version="1.1.2"
 )
 
 # Add CORS middleware

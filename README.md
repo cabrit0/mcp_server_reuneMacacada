@@ -256,4 +256,4 @@ This software is proprietary and confidential. Unauthorized copying, distributio
 
 © 2024 ReuneMacacada. All rights reserved.
 
-Last commit: v1.1.1 - Otimização de performance com pool de Puppeteer e scraping adaptativo
+Last commit: v1.1.2 - Correção de problemas com DuckDuckGo rate limit e Puppeteer

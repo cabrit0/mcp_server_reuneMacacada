@@ -68,7 +68,10 @@ async def _perform_search(query: str, max_results: int, region: str) -> List[Dic
     results = []
 
     try:
-        with DDGS(user_agent=user_agent) as ddgs:
+        # A biblioteca DDGS não aceita user_agent como parâmetro no construtor
+        # Vamos usar headers para definir o User-Agent
+        headers = {'User-Agent': user_agent}
+        with DDGS(headers=headers) as ddgs:
             for r in ddgs.text(query, max_results=max_results, region=region):
                 results.append({
                     "title": r.get('title'),
