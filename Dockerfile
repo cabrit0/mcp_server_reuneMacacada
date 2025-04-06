@@ -2,8 +2,8 @@ FROM python:3.9-slim
 
 # Metadados da imagem
 LABEL maintainer="ReuneMacacada"
-LABEL version="1.1.0"
-LABEL description="MCP Server - Gerador de planos de aprendizagem"
+LABEL version="1.1.1"
+LABEL description="MCP Server - Gerador de planos de aprendizagem com otimizações de performance"
 
 WORKDIR /app
 
@@ -21,7 +21,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching
-COPY requirements.txt .
+COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the rest of the application

@@ -193,8 +193,44 @@ async def list_tasks():
     return [task.to_dict() for task in task_manager.tasks.values()]
 
 
+@app.get("/cache_stats")
+async def get_cache_stats():
+    """
+    Get cache statistics.
+
+    This endpoint returns statistics about the cache, including the number of items in the cache
+    and information about the domain method cache that stores which scraping method works best for each domain.
+
+    Returns:
+        Dictionary with cache statistics.
+    """
+    try:
+        # Obter estatísticas do cache principal
+        cache_info = simple_cache.info()
+        cache_keys = simple_cache.keys("*")
+
+        # Obter estatísticas do cache de métodos por domínio
+        from content_scraper import get_domain_method_cache_stats
+        domain_cache_stats = get_domain_method_cache_stats()
+
+        return {
+            "status": "success",
+            "cache": {
+                "total_keys": len(cache_keys),
+                "info": cache_info
+            },
+            "domain_method_cache": domain_cache_stats
+        }
+    except Exception as e:
+        logger.error(f"Error getting cache stats: {str(e)}")
+        return {
+            "status": "error",
+            "message": f"Error getting cache stats: {str(e)}"
+        }
+
+
 @app.post("/clear_cache")
-async def clear_cache(pattern: Optional[str] = Query("*", description="Pattern to match cache keys (e.g., 'mcp:*' for all MCPs, 'search:*' for all search results, '*' for all)")):
+async def clear_cache(pattern: Optional[str] = Query("*", description="Pattern to match cache keys (e.g., 'mcp:*' for all MCPs, 'search:*' for all search results, '*' for all)"), clear_domain_cache: bool = Query(False, description="Whether to also clear the domain method cache")):
     """
     Clear the cache.
 
@@ -203,22 +239,36 @@ async def clear_cache(pattern: Optional[str] = Query("*", description="Pattern t
     Args:
         pattern: Pattern to match cache keys. Default is "*" which clears all cache.
                 Examples: "mcp:*" for all MCPs, "search:*" for all search results.
+        clear_domain_cache: Whether to also clear the domain method cache that stores which scraping method works best for each domain.
 
     Returns:
         Dictionary with count of items cleared and message.
     """
     try:
+        # Limpar o cache principal
         count = simple_cache.clear(pattern)
         logger.info(f"Cleared {count} items from cache matching pattern: {pattern}")
+
+        # Limpar o cache de métodos por domínio se solicitado
+        domain_cache_cleared = 0
+        if clear_domain_cache:
+            from content_scraper import clear_domain_method_cache
+            domain_cache_cleared = clear_domain_method_cache()
+            logger.info(f"Cleared domain method cache")
+
         return {
             "status": "success",
-            "message": f"Cleared {count} items from cache",
+            "message": f"Cleared {count} items from cache" + (", including domain method cache" if clear_domain_cache else ""),
             "pattern": pattern,
-            "count": count
+            "count": count,
+            "domain_cache_cleared": domain_cache_cleared
         }
     except Exception as e:
         logger.error(f"Error clearing cache: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error clearing cache: {str(e)}")
+        return {
+            "status": "error",
+            "message": f"Error clearing cache: {str(e)}"
+        }
 
 
 async def process_mcp_generation(

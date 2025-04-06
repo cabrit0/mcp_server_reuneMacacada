@@ -1,18 +1,19 @@
 """
 Módulo de scraping otimizado para o MCP Server.
+Utiliza um sistema adaptativo que escolhe automaticamente o método mais eficiente
+para cada site, reduzindo o uso de recursos e melhorando a performance.
 """
 
-import asyncio
-import aiohttp
 import logging
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse
-from typing import Dict, List, Optional, Any
+from typing import Dict, Optional, Any
 
-from puppeteer_pool import puppeteer_pool
+# Importar o novo sistema de scraping adaptativo
+from adaptive_scraper import adaptiveScrape, clearDomainMethodCache, getDomainMethodCacheStats
 from simple_cache import simple_cache
 
-# Domínios que requerem JavaScript
+# Domínios que sabemos que requerem JavaScript (usado como fallback)
 JS_REQUIRED_DOMAINS = {
     'twitter.com', 'linkedin.com', 'instagram.com',
     'facebook.com', 'medium.com', 'stackoverflow.com'
@@ -21,6 +22,7 @@ JS_REQUIRED_DOMAINS = {
 async def scrape_url(url: str, timeout: int = 30, cache_enabled: bool = True) -> Optional[str]:
     """
     Faz scraping de uma URL usando o método mais eficiente disponível.
+    Utiliza o sistema adaptativo que escolhe automaticamente entre métodos leves e pesados.
 
     Args:
         url: A URL para fazer scraping
@@ -38,94 +40,71 @@ async def scrape_url(url: str, timeout: int = 30, cache_enabled: bool = True) ->
             logging.info(f"Usando conteúdo em cache para {url}")
             return cached_content
 
-    domain = urlparse(url).netloc
-    content = None
+    try:
+        # Determinar se devemos forçar um método específico baseado em domínios conhecidos
+        domain = urlparse(url).netloc
+        force_method = None
 
-    # Decide qual método usar baseado no domínio
-    if any(js_domain in domain for js_domain in JS_REQUIRED_DOMAINS):
-        content = await scrape_with_puppeteer(url, timeout)
-    else:
-        # Tenta primeiro com requests
-        try:
-            content = await scrape_with_requests(url, timeout)
-            # Verifica se o conteúdo parece completo
-            if content and len(content) > 1000:
-                pass
-            else:
-                # Se o conteúdo parece incompleto, tenta com Puppeteer
-                content = await scrape_with_puppeteer(url, timeout)
-        except Exception as e:
-            logging.warning(f"Falha ao fazer scraping de {url} com requests: {str(e)}")
-            # Fallback para Puppeteer se requests falhar
-            content = await scrape_with_puppeteer(url, timeout)
+        if any(js_domain in domain for js_domain in JS_REQUIRED_DOMAINS):
+            force_method = 'puppeteer'
 
-    # Armazena o conteúdo em cache se bem-sucedido e o cache estiver habilitado
-    if content and cache_enabled:
-        simple_cache.setex(cache_key, 604800, content)  # 1 semana
+        # Usar o sistema adaptativo para escolher o melhor método
+        result = await adaptiveScrape(url, {
+            'timeout': timeout,
+            'method': force_method
+        })
 
-    return content
-
-async def scrape_with_requests(url: str, timeout: int = 30) -> Optional[str]:
-    """Faz scraping de uma URL usando aiohttp (leve)"""
-    async with aiohttp.ClientSession() as session:
-        try:
-            async with session.get(url, timeout=timeout, headers={
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-            }) as response:
-                if response.status == 200:
-                    return await response.text()
-                else:
-                    logging.warning(f"Falha ao fazer scraping de {url}: Status {response.status}")
-                    return None
-        except Exception as e:
-            logging.warning(f"Erro ao fazer scraping de {url}: {str(e)}")
+        if not result or not result.get('html'):
+            logging.warning(f"Scraping adaptativo falhou para {url}")
             return None
 
-async def handle_request(request):
-    """Manipula a interceptação de requisições para bloquear recursos desnecessários"""
-    if request.resourceType in ['stylesheet', 'font', 'image']:
-        await request.abort()
-    else:
-        await request.continue_()
+        content = result['html']
 
-async def scrape_with_puppeteer(url: str, timeout: int = 30) -> Optional[str]:
-    """Faz scraping de uma URL usando Puppeteer (para sites com JavaScript pesado)"""
-    browser = None
-    try:
-        browser = await puppeteer_pool.get_browser()
-        page = await browser.newPage()
-
-        # Otimiza o carregamento da página
-        await page.setRequestInterception(True)
-
-        # Define o manipulador de requisições
-        async def request_handler(req):
-            if req.resourceType in ['stylesheet', 'font', 'image']:
-                await req.abort()
-            else:
-                await req.continue_()
-
-        page.on('request', lambda req: asyncio.ensure_future(request_handler(req)))
-
-        # Define o timeout
-        await page.setDefaultNavigationTimeout(timeout * 1000)
-
-        # Navega para a página
-        await page.goto(url, {'waitUntil': 'domcontentloaded'})
-
-        # Obtém o conteúdo da página
-        content = await page.content()
-
-        # Fecha a página
-        await page.close()
+        # Armazena o conteúdo em cache se bem-sucedido e o cache estiver habilitado
+        if content and cache_enabled:
+            # Armazenar por 1 semana (604800 segundos)
+            simple_cache.setex(cache_key, 604800, content)
+            logging.info(f"Armazenado em cache: {url} (método: {result.get('method', 'desconhecido')})")
 
         return content
     except Exception as e:
-        logging.warning(f"Erro ao fazer scraping de {url} com Puppeteer: {str(e)}")
+        logging.error(f"Erro ao fazer scraping de {url}: {str(e)}")
         return None
-    finally:
-        if browser:
-            await puppeteer_pool.release_browser(browser)
+
+def clear_domain_method_cache() -> int:
+    """
+    Limpa o cache de métodos por domínio.
+
+    Returns:
+        Número de entradas removidas do cache
+    """
+    try:
+        # Limpar o cache de métodos por domínio
+        clearDomainMethodCache()
+        logging.info("Cache de métodos por domínio foi limpo")
+        return 1
+    except Exception as e:
+        logging.error(f"Erro ao limpar cache de métodos: {str(e)}")
+        return 0
+
+
+def get_domain_method_cache_stats() -> Dict[str, Any]:
+    """
+    Obtém estatísticas do cache de métodos por domínio.
+
+    Returns:
+        Dicionário com estatísticas do cache
+    """
+    try:
+        stats = getDomainMethodCacheStats()
+        return stats
+    except Exception as e:
+        logging.error(f"Erro ao obter estatísticas do cache de métodos: {str(e)}")
+        return {
+            "error": str(e),
+            "totalDomains": 0,
+            "domains": []
+        }
 
 
 def extract_metadata_from_html(html_content: str, url: str, topic: str) -> Dict[str, Any]:

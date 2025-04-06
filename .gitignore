@@ -38,11 +38,21 @@ ENV/
 Thumbs.db
 
 # Arquivos temporários
-*.json
 *.log
 tmp/
 temp/
 .cache/
+
+# Node.js
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+.npm/
+.yarn/
+.pnp.*
+package-lock.json
+yarn.lock
 
 # Arquivos de teste
 test_*.py
@@ -61,6 +71,9 @@ __pycache__/
 *.pyd
 .coverage
 htmlcov/
+
+# Arquivos JSON temporários (exceto package.json)
+# Não ignorar package.json
 
 # Arquivos de configuração local
 .env.local

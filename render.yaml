@@ -2,7 +2,9 @@ services:
   - type: web
     name: mcp-server
     env: python
-    buildCommand: pip install -r requirements.txt
+    buildCommand: |
+      # Instalar dependências Python
+      pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION

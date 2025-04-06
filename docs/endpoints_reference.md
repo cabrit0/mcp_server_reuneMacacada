@@ -223,16 +223,17 @@ Retorna uma lista de todas as tarefas no servidor.
 ### 6. Limpar Cache
 
 ```
-POST /clear_cache?pattern={pattern}
+POST /clear_cache?pattern={pattern}&clear_domain_cache={clear_domain_cache}
 ```
 
 Limpa o cache do servidor com base em um padrão de correspondência.
 
 **Parâmetros:**
 
-| Parâmetro | Tipo   | Obrigatório | Descrição                                                                                                                                               |
-| --------- | ------ | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| pattern   | string | Não         | Padrão para correspondência de chaves. Padrão é "_" que limpa todo o cache. Exemplos: "mcp:_" para todos os MCPs, "search:\*" para resultados de busca. |
+| Parâmetro          | Tipo    | Obrigatório | Descrição                                                                                                                                               |
+| ------------------ | ------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| pattern            | string  | Não         | Padrão para correspondência de chaves. Padrão é "_" que limpa todo o cache. Exemplos: "mcp:_" para todos os MCPs, "search:\*" para resultados de busca. |
+| clear_domain_cache | boolean | Não         | Se deve limpar também o cache de métodos por domínio. Padrão é false.                                                                                   |
 
 **Resposta de Sucesso:**
 
@@ -241,7 +242,53 @@ Limpa o cache do servidor com base em um padrão de correspondência.
   "status": "success",
   "message": "Cleared 15 items from cache",
   "pattern": "mcp:*",
-  "count": 15
+  "count": 15,
+  "domain_cache_cleared": 0
+}
+```
+
+**Códigos de Status:**
+
+| Código | Descrição                |
+| ------ | ------------------------ |
+| 200    | Sucesso                  |
+| 500    | Erro interno do servidor |
+
+### 7. Estatísticas de Cache
+
+```
+GET /cache_stats
+```
+
+Retorna estatísticas sobre o cache do servidor, incluindo informações sobre o cache principal e o cache de métodos por domínio.
+
+**Resposta de Sucesso:**
+
+```json
+{
+  "status": "success",
+  "cache": {
+    "total_keys": 42,
+    "info": {
+      "used_memory": "1.2MB",
+      "hits": 156,
+      "misses": 89
+    }
+  },
+  "domain_method_cache": {
+    "totalDomains": 15,
+    "simpleMethodCount": 10,
+    "puppeteerMethodCount": 5,
+    "domains": [
+      {
+        "domain": "example.com",
+        "method": "simple",
+        "successRate": 0.95,
+        "usageCount": 12,
+        "lastUpdated": "2023-05-15T14:30:45Z"
+      }
+    ]
+  }
 }
 ```
 
