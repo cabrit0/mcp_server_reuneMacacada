@@ -31,14 +31,15 @@ scrape_cache = {}
 search_cache = {}
 
 
-async def scrape_with_optimized_scraper(url: str, topic: str, timeout: int = 15) -> Dict[str, Any]:
+async def scrape_with_optimized_scraper(url: str, topic: str, timeout: int = 8) -> Dict[str, Any]:
     """
     Scrape content from websites using the optimized scraper.
+    Implementação mais resiliente com timeout rigoroso e fallback para métodos mais simples.
 
     Args:
         url: URL to scrape
         topic: Topic being searched for
-        timeout: Timeout in seconds
+        timeout: Timeout in seconds (reduzido para 8 segundos para evitar bloqueios)
 
     Returns:
         Dictionary with title, description, and content type
@@ -50,14 +51,30 @@ async def scrape_with_optimized_scraper(url: str, topic: str, timeout: int = 15)
         logger.info(f"Using cached resource for {url}")
         return cached_result
 
+    # Resultado padrão em caso de falha
+    default_result = {
+        'title': f"Resource about {topic}",
+        'url': url,
+        'description': f"A resource about {topic}",
+        'type': 'unknown'
+    }
+
+    # Usar um timeout rigoroso para evitar que a tarefa fique presa
     try:
-        # Use the optimized scraper from content_scraper.py
+        # Criar uma tarefa com timeout
+        scraping_task = asyncio.create_task(content_scraper.scrape_url(url, timeout))
 
-        # Get HTML content
-        html_content = await content_scraper.scrape_url(url, timeout)
+        # Aguardar a tarefa com timeout
+        try:
+            html_content = await asyncio.wait_for(scraping_task, timeout=timeout)
+        except asyncio.TimeoutError:
+            logger.warning(f"Timeout scraping {url} after {timeout} seconds")
+            return default_result
 
+        # Se não conseguiu obter conteúdo, retornar resultado padrão
         if not html_content:
-            raise Exception("Failed to load page content")
+            logger.warning(f"No content returned for {url}")
+            return default_result
 
         # Extract metadata
         result = content_scraper.extract_metadata_from_html(html_content, url, topic)
@@ -69,13 +86,7 @@ async def scrape_with_optimized_scraper(url: str, topic: str, timeout: int = 15)
 
     except Exception as e:
         logger.warning(f"Error scraping {url}: {str(e)}")
-        result = {
-            'title': f"Resource about {topic}",
-            'url': url,
-            'description': f"A resource about {topic}",
-            'type': 'unknown'
-        }
-        return result
+        return default_result
 
 
 async def determine_content_type(page, url: str) -> str:
@@ -432,21 +443,37 @@ async def find_resources(topic: str, max_results: int = 15, language: str = "pt"
     web_resources = []
 
     # Process all results with the optimized scraper
-    scraper_tasks = []
-    for url, result in unique_results.items():
-        scraper_tasks.append(scrape_with_optimized_scraper(url, topic, timeout=8))
+    # Limitar o número de tarefas concorrentes para evitar sobrecarga
+    max_concurrent_tasks = 5  # Limitar a 5 tarefas concorrentes
 
-    # Run scraper tasks concurrently
-    if scraper_tasks:
-        scraper_results = await asyncio.gather(*scraper_tasks, return_exceptions=True)
+    # Processar URLs em lotes para evitar sobrecarga
+    all_urls = list(unique_results.items())
+    for i in range(0, len(all_urls), max_concurrent_tasks):
+        batch = all_urls[i:i+max_concurrent_tasks]
 
-        # Update results with scraped data
-        for i, (url, _) in enumerate(unique_results.items()):
-            if i < len(scraper_results) and not isinstance(scraper_results[i], Exception):
-                unique_results[url].update(scraper_results[i])
+        # Criar tarefas para este lote
+        scraper_tasks = []
+        for url, result in batch:
+            scraper_tasks.append(scrape_with_optimized_scraper(url, topic, timeout=8))
 
-        # Add a small delay to avoid overwhelming the server
-        await asyncio.sleep(0.05)  # Reduced delay for better performance
+        # Executar tarefas concorrentemente com timeout global
+        try:
+            # Usar wait_for para garantir que não fique preso
+            scraper_results = await asyncio.wait_for(
+                asyncio.gather(*scraper_tasks, return_exceptions=True),
+                timeout=20  # Timeout global de 20 segundos para todo o lote
+            )
+
+            # Atualizar resultados com dados obtidos
+            for j, (url, _) in enumerate(batch):
+                if j < len(scraper_results) and not isinstance(scraper_results[j], Exception):
+                    unique_results[url].update(scraper_results[j])
+
+        except asyncio.TimeoutError:
+            logger.warning(f"Timeout processing batch of URLs starting with {batch[0][0]}")
+
+        # Adicionar um pequeno atraso para evitar sobrecarregar o servidor
+        await asyncio.sleep(0.1)
 
     # Convert to Resource objects
     for url, result in unique_results.items():
@@ -468,10 +495,21 @@ async def find_resources(topic: str, max_results: int = 15, language: str = "pt"
 
         web_resources.append(resource)
 
-    # Search for YouTube videos
+    # Search for YouTube videos with timeout
     print(f"Searching YouTube for '{topic}'...")
-    youtube_resources = await search_youtube_videos(topic, max_results=max_results // 3, language=language)
-    print(f"Found {len(youtube_resources)} YouTube videos for '{topic}'")
+    try:
+        # Usar wait_for para garantir que não fique preso
+        youtube_task = asyncio.create_task(
+            search_youtube_videos(topic, max_results=max_results // 3, language=language)
+        )
+        youtube_resources = await asyncio.wait_for(youtube_task, timeout=15)  # 15 segundos de timeout
+        print(f"Found {len(youtube_resources)} YouTube videos for '{topic}'")
+    except asyncio.TimeoutError:
+        logger.warning(f"Timeout searching YouTube videos for '{topic}'")
+        youtube_resources = []  # Lista vazia em caso de timeout
+    except Exception as e:
+        logger.error(f"Error searching YouTube videos: {str(e)}")
+        youtube_resources = []
 
     # Combine web and YouTube resources
     all_resources = web_resources + youtube_resources
