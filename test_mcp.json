@@ -1,0 +1,152 @@
+{
+  "id": "python_programming_33642c6e",
+  "title": "Learning Path: Python Programming",
+  "description": "A comprehensive learning path to master Python programming.",
+  "rootNodeId": "introduction_to_34242c88",
+  "nodes": {
+    "introduction_to_34242c88": {
+      "id": "introduction_to_34242c88",
+      "title": "Introduction To Python Programming",
+      "description": "Get started with Python programming and learn the basic concepts.",
+      "type": "lesson",
+      "state": "available",
+      "resources": [
+        {
+          "id": "resource_70a5dbb6",
+          "title": "Python Tutorial | Learn Python Programming Language - GeeksforGeeks",
+          "url": "https://www.geeksforgeeks.org/python-programming-language-tutorial/",
+          "type": "article",
+          "description": "A comprehensive guide to learn Python, a versatile and popular programming language. Cover topics from basics to advanced concepts, data science, web development, packages, quizzes and more.",
+          "duration": null,
+          "readTime": null,
+          "difficulty": "intermediate"
+        }
+      ],
+      "prerequisites": [],
+      "rewards": [],
+      "hints": [],
+      "visualPosition": {
+        "x": 0,
+        "y": 0,
+        "level": 0
+      },
+      "quiz": null
+    },
+    "fundamentals_of_6a45f879": {
+      "id": "fundamentals_of_6a45f879",
+      "title": "Fundamentals Of Python Programming",
+      "description": "Learn the core principles and techniques of Python programming.",
+      "type": "lesson",
+      "state": "available",
+      "resources": [
+        {
+          "id": "resource_8596c3ce",
+          "title": "Python Tutorial - W3Schools",
+          "url": "https://www.w3schools.com/python/",
+          "type": "article",
+          "description": "W3Schools offers a comprehensive and interactive Python tutorial with examples, exercises, quizzes, and references. You can learn Python for web applications, file handling, database access, and more.",
+          "duration": null,
+          "readTime": null,
+          "difficulty": "intermediate"
+        },
+        {
+          "id": "resource_7bf882c9",
+          "title": "The Python Tutorial — Python 3.13.2 documentation",
+          "url": "https://docs.python.org/3/tutorial/index.html",
+          "type": "article",
+          "description": "Learn the basic concepts and features of Python, a powerful and easy to learn programming language, with this tutorial. It covers topics such as data structures, modules, classes, exceptions, and more...",
+          "duration": null,
+          "readTime": null,
+          "difficulty": "intermediate"
+        },
+        {
+          "id": "resource_c9db5f76",
+          "title": "Our Documentation | Python.org",
+          "url": "https://www.python.org/doc/",
+          "type": "article",
+          "description": "The official home of the Python Programming Language. Notice: ... Python's documentation, tutorials, and guides are constantly evolving. Get started here, or scroll down for documentation broken out b...",
+          "duration": null,
+          "readTime": null,
+          "difficulty": "intermediate"
+        },
+        {
+          "id": "resource_e9a7e0e1",
+          "title": "Python 3.13.2 documentation",
+          "url": "https://docs.python.org/",
+          "type": "article",
+          "description": "What's new in Python 3.13? Or all \"What's new\" documents since Python 2.0. Tutorial Start here: a tour of Python's syntax and features. Library reference Standard library and builtins. Language refere...",
+          "duration": null,
+          "readTime": null,
+          "difficulty": "intermediate"
+        }
+      ],
+      "prerequisites": [
+        "introduction_to_34242c88"
+      ],
+      "rewards": [],
+      "hints": [],
+      "visualPosition": {
+        "x": 0,
+        "y": 200,
+        "level": 1
+      },
+      "quiz": {
+        "questions": [
+          {
+            "id": "q_c72cfef0",
+            "text": "What is the main purpose of Python programming?",
+            "options": [
+              "To simplify Python programming development",
+              "To optimize Python programming performance",
+              "To standardize Python programming implementation",
+              "To visualize Python programming data"
+            ],
+            "correctOptionIndex": 0
+          },
+          {
+            "id": "q_fd7a58b7",
+            "text": "Which of the following is NOT a feature of Python programming?",
+            "options": [
+              "Easy integration with other systems",
+              "Built-in security features",
+              "Automatic code generation",
+              "Cross-platform compatibility"
+            ],
+            "correctOptionIndex": 2
+          }
+        ],
+        "passingScore": 70
+      }
+    },
+    "project_cc1643af": {
+      "id": "project_cc1643af",
+      "title": "Python Programming Project",
+      "description": "Apply what you've learned by building a project related to Python programming.",
+      "type": "project",
+      "state": "available",
+      "resources": [],
+      "prerequisites": [
+        "fundamentals_of_6a45f879"
+      ],
+      "rewards": [],
+      "hints": [],
+      "visualPosition": {
+        "x": 0,
+        "y": 400,
+        "level": 2
+      },
+      "quiz": null
+    }
+  },
+  "metadata": {
+    "difficulty": "intermediate",
+    "estimatedHours": 4,
+    "tags": [
+      "python programming",
+      "python programming",
+      "article",
+      "programming",
+      "tutorial"
+    ]
+  }
+}
