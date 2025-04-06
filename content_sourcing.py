@@ -7,7 +7,6 @@ from urllib.parse import urlparse
 
 import requests
 from bs4 import BeautifulSoup
-from duckduckgo_search import DDGS
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
@@ -15,6 +14,7 @@ from schemas import Resource
 from categories import detect_category, get_resource_queries_for_category
 from youtube_integration import search_youtube_videos
 from simple_cache import simple_cache
+from search_utils import search_with_backoff
 
 # Importações para o scraper otimizado
 import content_scraper
@@ -115,65 +115,37 @@ def estimate_read_time(content_length: int) -> int:
     return max(1, minutes)  # Minimum 1 minute
 
 
-def search_web(query: str, max_results: int = 5, language: str = "en") -> List[Dict[str, Any]]:
+async def search_web(query: str, max_results: int = 5, language: str = "en") -> List[Dict[str, Any]]:
     """
-    Search the web using DuckDuckGo.
+    Search the web using DuckDuckGo with anti-blocking measures.
 
     Args:
         query: The search query
         max_results: Maximum number of results to return
+        language: Language code (e.g., 'en', 'pt')
 
     Returns:
         List of dictionaries with title and URL
     """
     # Check cache first
-    cache_key = f"{query}_{max_results}_{language}"
-    if cache_key in search_cache:
-        return search_cache[cache_key]
+    cache_key = f"search:{query}_{max_results}_{language}"
+    cached_result = simple_cache.get(cache_key)
+    if cached_result:
+        logger.info(f"Using cached search results for '{query}'")
+        return cached_result
 
-    results = []
-    try:
-        # Add language to the query for better results
-        if language != "en":
-            query = f"{query} {language}"
+    # Use our enhanced search function with backoff
+    results = await search_with_backoff(query, max_results, language)
 
-        with DDGS() as ddgs:
-            # Use region parameter if available for language-specific results
-            region = get_region_for_language(language)
-            for r in ddgs.text(query, max_results=max_results, region=region):
-                results.append({
-                    "title": r.get('title'),
-                    "url": r.get('href'),
-                    "description": r.get('body', '')[:200] + '...' if r.get('body', '') and len(r.get('body', '')) > 200 else r.get('body', ''),
-                })
-    except Exception as e:
-        print(f"Error searching with DuckDuckGo: {e}")
-
-    # Cache the results with size limit
-    search_cache[cache_key] = results
-
-    # Trim cache if it gets too large
-    if len(search_cache) > MAX_CACHE_SIZE:
-        # Remove oldest entries (first 10%)
-        keys_to_remove = list(search_cache.keys())[:MAX_CACHE_SIZE // 10]
-        for key in keys_to_remove:
-            del search_cache[key]
+    # Cache the results if successful
+    if results:
+        # Cache for 1 day (86400 seconds)
+        simple_cache.setex(cache_key, 86400, results)
+        logger.info(f"Cached search results for '{query}' ({len(results)} results)")
+    else:
+        logger.warning(f"No search results found for '{query}'")
 
     return results
-
-
-def get_region_for_language(language: str) -> str:
-    """Map language code to DuckDuckGo region code for better search results."""
-    language_to_region = {
-        "en": "us-en",
-        "pt": "br-pt",  # Brazil Portuguese
-        "es": "es-es",  # Spain Spanish
-        "fr": "fr-fr",  # France French
-        "de": "de-de",  # Germany German
-        "it": "it-it",  # Italy Italian
-        # Add more mappings as needed
-    }
-    return language_to_region.get(language, "us-en")
 
 
 def get_stopwords(language: str) -> List[str]:
@@ -434,10 +406,21 @@ async def find_resources(topic: str, max_results: int = 15, language: str = "pt"
 
     all_results = []
 
-    # Search the web for each query
+    # Search the web for each query (concorrentemente)
+    search_tasks = []
     for query in queries:
-        results = search_web(query, max_results=3, language=language)
-        all_results.extend(results)
+        search_tasks.append(search_web(query, max_results=3, language=language))
+
+    # Executar buscas concorrentemente
+    if search_tasks:
+        search_results = await asyncio.gather(*search_tasks, return_exceptions=True)
+
+        # Processar resultados
+        for i, result in enumerate(search_results):
+            if not isinstance(result, Exception) and result:
+                all_results.extend(result)
+            elif isinstance(result, Exception):
+                logger.error(f"Erro na busca para '{queries[i]}': {str(result)}")
 
     # Remove duplicates based on URL
     unique_results = {}
