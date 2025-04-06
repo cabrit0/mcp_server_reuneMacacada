@@ -280,7 +280,7 @@ def create_node_structure(topic: str, subtopics: List[str], resources: List[Reso
     return nodes, node_ids
 
 
-def generate_learning_path(topic: str, resources: List[Resource]) -> MCP:
+def generate_learning_path(topic: str, resources: List[Resource], min_nodes: int = 15, max_nodes: int = 28) -> MCP:
     """
     Generate a learning path based on a topic and a list of resources.
 
@@ -306,9 +306,11 @@ def generate_learning_path(topic: str, resources: List[Resource]) -> MCP:
     subtopics = generate_subtopics(topic, num_subtopics)
 
     # Create node structure with randomness
-    min_nodes = 15
-    max_nodes = 28
     nodes, node_ids = create_node_structure(topic, subtopics, resources, min_nodes, max_nodes)
+
+    # Validate that we have enough nodes
+    if len(nodes) < min(10, min_nodes):
+        raise ValueError(f"Could not generate enough nodes for topic: {topic}. Only generated {len(nodes)} nodes. Please try a different topic or adjust parameters.")
 
     # Create the MCP
     mcp = MCP(
