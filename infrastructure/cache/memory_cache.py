@@ -34,12 +34,13 @@ class MemoryCache(CacheService):
         self.metrics = CacheMetrics()
         logger.info(f"Initializing MemoryCache with maximum size of {max_size} items")
 
-    def get(self, key: str) -> Optional[Any]:
+    def get(self, key: str, resource_type: Optional[str] = None) -> Optional[Any]:
         """
         Get a value from the cache.
 
         Args:
             key: Cache key
+            resource_type: Optional type hint for deserialization ('resource' or 'resource_list')
 
         Returns:
             Stored value or None if not found or expired
@@ -66,10 +67,46 @@ class MemoryCache(CacheService):
         value = self.cache[key]
         if isinstance(value, bytes):
             try:
-                return msgpack.unpackb(value, raw=False)
+                # Deserialize the value
+                deserialized_value = msgpack.unpackb(value, raw=False)
+
+                # Convert to Resource object if requested
+                if resource_type == 'resource' and isinstance(deserialized_value, dict):
+                    from api.models import Resource
+                    try:
+                        return Resource(**deserialized_value)
+                    except Exception as e:
+                        logger.error(f"Error creating Resource from dict: {str(e)}")
+                        return deserialized_value
+                elif resource_type == 'resource_list' and isinstance(deserialized_value, list):
+                    from api.models import Resource
+                    try:
+                        return [Resource(**item) if isinstance(item, dict) else item for item in deserialized_value]
+                    except Exception as e:
+                        logger.error(f"Error creating Resource list from dict list: {str(e)}")
+                        return deserialized_value
+                else:
+                    return deserialized_value
             except Exception as e:
                 logger.error(f"Error deserializing value for key {key}: {str(e)}")
                 return value
+
+        # Convert to Resource object if requested (for non-serialized values)
+        if resource_type == 'resource' and isinstance(value, dict):
+            from api.models import Resource
+            try:
+                return Resource(**value)
+            except Exception as e:
+                logger.error(f"Error creating Resource from dict: {str(e)}")
+                return value
+        elif resource_type == 'resource_list' and isinstance(value, list):
+            from api.models import Resource
+            try:
+                return [Resource(**item) if isinstance(item, dict) else item for item in value]
+            except Exception as e:
+                logger.error(f"Error creating Resource list from dict list: {str(e)}")
+                return value
+
         return value
 
     def setex(self, key: str, ttl: int, value: Any) -> bool:
@@ -93,10 +130,23 @@ class MemoryCache(CacheService):
 
         # Try to serialize complex objects for more efficient storage
         try:
+            # Handle Resource objects
+            if hasattr(value, 'to_dict') and callable(value.to_dict):
+                # Convert Resource object to dictionary
+                value = value.to_dict()
+                logger.debug(f"Converted Resource object to dictionary for key {key}")
+            # Handle lists of Resource objects
+            elif isinstance(value, list) and all(hasattr(item, 'to_dict') and callable(item.to_dict) for item in value):
+                # Convert list of Resource objects to list of dictionaries
+                value = [item.to_dict() for item in value]
+                logger.debug(f"Converted list of Resource objects to list of dictionaries for key {key}")
+
+            # Serialize dictionaries, lists, and tuples
             if isinstance(value, (dict, list, tuple)) and not isinstance(value, bytes):
                 value = msgpack.packb(value, use_bin_type=True)
         except Exception as e:
             logger.warning(f"Could not serialize value for key {key}: {str(e)}")
+            # Continue with storing the original value
 
         # Store the value
         self.cache[key] = value

@@ -46,17 +46,18 @@ Gera um plano de aprendizagem para o tópico especificado de forma síncrona (ag
 
 **Parâmetros:**
 
-| Parâmetro     | Tipo    | Obrigatório | Padrão | Descrição                                                                                                          |
-| ------------- | ------- | ----------- | ------ | ------------------------------------------------------------------------------------------------------------------ |
-| topic         | string  | Sim         | -      | O tópico para o qual gerar o plano de aprendizagem (mínimo 3 caracteres)                                           |
-| max_resources | integer | Não         | 15     | Número máximo de recursos a incluir (mín: 5, máx: 30)                                                              |
-| num_nodes     | integer | Não         | 15     | Número de nós a incluir no plano de aprendizagem (mín: 10, máx: 30)                                                |
-| min_width     | integer | Não         | 3      | Largura mínima da árvore (nós no primeiro nível) (mín: 2, máx: 10)                                                 |
-| max_width     | integer | Não         | 5      | Largura máxima em qualquer nível da árvore (mín: 3, máx: 15)                                                       |
-| min_height    | integer | Não         | 3      | Altura mínima da árvore (profundidade) (mín: 2, máx: 8)                                                            |
-| max_height    | integer | Não         | 7      | Altura máxima da árvore (profundidade) (mín: 3, máx: 12)                                                           |
-| language      | string  | Não         | "pt"   | Idioma preferido para os recursos (ex: "pt", "en", "es")                                                           |
-| category      | string  | Não         | null   | Categoria para o tópico (ex: "technology", "finance", "health"). Se não fornecido, será detectado automaticamente. |
+| Parâmetro            | Tipo    | Obrigatório | Padrão | Descrição                                                                                                                         |
+| -------------------- | ------- | ----------- | ------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| topic                | string  | Sim         | -      | O tópico para o qual gerar o plano de aprendizagem (mínimo 3 caracteres)                                                          |
+| max_resources        | integer | Não         | 15     | Número máximo de recursos a incluir (mín: 5, máx: 30)                                                                             |
+| num_nodes            | integer | Não         | 15     | Número de nós a incluir no plano de aprendizagem (mín: 10, máx: 30)                                                               |
+| min_width            | integer | Não         | 3      | Largura mínima da árvore (nós no primeiro nível) (mín: 2, máx: 10)                                                                |
+| max_width            | integer | Não         | 5      | Largura máxima em qualquer nível da árvore (mín: 3, máx: 15)                                                                      |
+| min_height           | integer | Não         | 3      | Altura mínima da árvore (profundidade) (mín: 2, máx: 8)                                                                           |
+| max_height           | integer | Não         | 7      | Altura máxima da árvore (profundidade) (mín: 3, máx: 12)                                                                          |
+| language             | string  | Não         | "pt"   | Idioma preferido para os recursos (ex: "pt", "en", "es")                                                                          |
+| category             | string  | Não         | null   | Categoria para o tópico (ex: "technology", "finance", "health"). Se não fornecido, será detectado automaticamente.                |
+| similarity_threshold | float   | Não         | 0.15   | Limiar mínimo de similaridade semântica para filtragem de recursos (0-1). Valores mais altos resultam em filtragem mais rigorosa. |
 
 **Resposta de Sucesso:**
 
@@ -355,6 +356,12 @@ POST /clear_cache?pattern=mcp:*
 GET /status/550e8400-e29b-41d4-a716-446655440000
 ```
 
+### Exemplo 10: Gerar um MCP com filtragem de relevância mais rigorosa
+
+```
+GET /generate_mcp?topic=inteligência+artificial&similarity_threshold=0.3
+```
+
 ## Recomendações de Uso
 
 1. **Use o endpoint assíncrono**: Para evitar timeouts, especialmente no plano gratuito do Render, recomendamos usar o endpoint `/generate_mcp_async` em vez do `/generate_mcp`.
@@ -366,3 +373,5 @@ GET /status/550e8400-e29b-41d4-a716-446655440000
 4. **Controle a estrutura da árvore**: Use os parâmetros `min_width`, `max_width`, `min_height` e `max_height` para controlar a estrutura da árvore de aprendizagem.
 
 5. **Tratamento de erros**: Implemente tratamento de erros robusto para lidar com falhas na API.
+
+6. **Ajuste a filtragem semântica**: Use o parâmetro `similarity_threshold` para controlar a relevância dos recursos. Valores mais altos (ex: 0.3-0.5) resultam em recursos mais relevantes, mas podem reduzir a quantidade total de recursos. Valores mais baixos (ex: 0.1-0.2) incluem mais recursos, mas podem ser menos relevantes.

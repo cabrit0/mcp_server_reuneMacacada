@@ -60,7 +60,9 @@ SCRAPING = {
     'puppeteer': {
         'max_instances': 3,
         'timeout': 30,  # seconds
-        'stealth': True
+        'stealth': True,
+        'executable_path': os.environ.get('CHROME_EXECUTABLE_PATH', None),
+        'download_chromium': os.environ.get('PUPPETEER_DOWNLOAD_CHROMIUM', 'False').lower() == 'true'
     }
 }
 

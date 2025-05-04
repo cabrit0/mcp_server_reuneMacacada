@@ -336,19 +336,20 @@ Limpa o cache do servidor com base em um padrão de correspondência.
 
 ### Node
 
-| Campo          | Tipo   | Descrição                                                |
-| -------------- | ------ | -------------------------------------------------------- |
-| id             | string | Identificador único do nó                                |
-| title          | string | Título do nó                                             |
-| description    | string | Descrição do nó                                          |
-| type           | string | Tipo do nó (lesson, exercise_set, project, quiz)         |
-| state          | string | Estado do nó (available, locked, completed, in_progress) |
-| resources      | array  | Lista de recursos para o nó                              |
-| prerequisites  | array  | Lista de IDs de nós pré-requisitos                       |
-| rewards        | array  | Lista de recompensas por completar o nó                  |
-| hints          | array  | Lista de dicas para o nó                                 |
-| visualPosition | object | Posição visual do nó no plano de aprendizagem            |
-| quiz           | object | Quiz associado ao nó (opcional)                          |
+| Campo          | Tipo   | Descrição                                                  |
+| -------------- | ------ | ---------------------------------------------------------- |
+| id             | string | Identificador único do nó                                  |
+| title          | string | Título do nó                                               |
+| description    | string | Descrição do nó                                            |
+| type           | string | Tipo do nó (lesson, exercise_set, project, quiz)           |
+| state          | string | Estado do nó (available, locked, completed, in_progress)   |
+| resources      | array  | Lista de recursos para o nó                                |
+| prerequisites  | array  | Lista de IDs de nós pré-requisitos                         |
+| rewards        | array  | Lista de recompensas por completar o nó                    |
+| hints          | array  | Lista de dicas para o nó                                   |
+| visualPosition | object | Posição visual do nó no plano de aprendizagem              |
+| quiz           | object | Quiz associado ao nó (opcional)                            |
+| exerciseSet    | object | Conjunto de exercícios práticos associado ao nó (opcional) |
 
 ### Metadata
 
@@ -387,6 +388,28 @@ Limpa o cache do servidor com base em um padrão de correspondência.
 | text               | string  | Texto da pergunta               |
 | options            | array   | Lista de opções para a pergunta |
 | correctOptionIndex | integer | Índice da opção correta         |
+
+### ExerciseSet
+
+| Campo        | Tipo    | Descrição                                   |
+| ------------ | ------- | ------------------------------------------- |
+| exercises    | array   | Lista de exercícios no conjunto             |
+| passingScore | integer | Pontuação mínima para passar nos exercícios |
+
+### Exercise
+
+| Campo              | Tipo   | Descrição                                                                   |
+| ------------------ | ------ | --------------------------------------------------------------------------- |
+| id                 | string | Identificador único do exercício                                            |
+| title              | string | Título do exercício                                                         |
+| description        | string | Descrição do exercício                                                      |
+| difficulty         | string | Nível de dificuldade (beginner, intermediate, advanced)                     |
+| instructions       | string | Instruções passo a passo para o exercício                                   |
+| hints              | array  | Lista de dicas para o exercício (para revelação progressiva)                |
+| solution           | string | Solução do exercício                                                        |
+| verificationMethod | string | Método de verificação (multiple_choice, text_match, code_execution, manual) |
+| options            | array  | Lista de opções para exercícios de múltipla escolha (opcional)              |
+| correctAnswer      | string | Resposta correta para o exercício                                           |
 
 ### TaskInfo
 

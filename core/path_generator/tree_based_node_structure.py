@@ -8,10 +8,11 @@ import asyncio
 from typing import Dict, List, Tuple, Optional, Set
 
 from infrastructure.logging import logger
-from api.models import Node, Resource, Quiz
+from api.models import Node, Resource, Quiz, ExerciseSet
 from services.youtube import youtube
 from core.path_generator.node_structure_service import NodeStructureService
 from core.path_generator.quiz_generator_service import QuizGeneratorService
+from core.path_generator.exercise_generator_service import ExerciseGeneratorService
 
 
 class TreeBasedNodeStructure(NodeStructureService):
@@ -20,15 +21,17 @@ class TreeBasedNodeStructure(NodeStructureService):
     Creates a tree-like structure of nodes with branches and paths.
     """
 
-    def __init__(self, quiz_generator: QuizGeneratorService):
+    def __init__(self, quiz_generator: QuizGeneratorService, exercise_generator: ExerciseGeneratorService = None):
         """
         Initialize the tree-based node structure service.
 
         Args:
             quiz_generator: Quiz generator service
+            exercise_generator: Exercise generator service (optional)
         """
         self.logger = logger.get_logger("path_generator.node_structure")
         self.quiz_generator = quiz_generator
+        self.exercise_generator = exercise_generator
         self.logger.info("Initialized TreeBasedNodeStructure")
 
     async def create_node_structure(
@@ -86,7 +89,11 @@ class TreeBasedNodeStructure(NodeStructureService):
         # Track used resources by ID to avoid unhashable type issues
         used_resource_ids = set()
         if resources and len(resources) >= 2:
-            used_resource_ids.update([r.id for r in resources[:2]])
+            for r in resources[:2]:
+                if hasattr(r, 'id'):
+                    used_resource_ids.add(r.id)
+                elif isinstance(r, dict) and 'id' in r:
+                    used_resource_ids.add(r['id'])
 
         # Use the first two resources for the root node
         root_node.resources = resources[:2] if resources else []
@@ -112,7 +119,10 @@ class TreeBasedNodeStructure(NodeStructureService):
                 # Adicionar vídeos específicos para este subtópico
                 for video in subtopic_videos:
                     branch_resources.append(video)
-                    used_resource_ids.add(video.id)
+                    if hasattr(video, 'id'):
+                        used_resource_ids.add(video.id)
+                    elif isinstance(video, dict) and 'id' in video:
+                        used_resource_ids.add(video['id'])
 
                 # Adicionar outros recursos gerais
                 for _ in range(min(1, len(remaining_resources))):
@@ -120,7 +130,10 @@ class TreeBasedNodeStructure(NodeStructureService):
                         resource = random.choice(remaining_resources)
                         branch_resources.append(resource)
                         remaining_resources.remove(resource)
-                        used_resource_ids.add(resource.id)
+                        if hasattr(resource, 'id'):
+                            used_resource_ids.add(resource.id)
+                        elif isinstance(resource, dict) and 'id' in resource:
+                            used_resource_ids.add(resource['id'])
 
                 branch_node = Node(
                     id=branch_id,
@@ -172,7 +185,10 @@ class TreeBasedNodeStructure(NodeStructureService):
                             # Adicionar vídeos específicos para este subtópico
                             for video in node_videos:
                                 node_resources.append(video)
-                                used_resource_ids.add(video.id)
+                                if hasattr(video, 'id'):
+                                    used_resource_ids.add(video.id)
+                                elif isinstance(video, dict) and 'id' in video:
+                                    used_resource_ids.add(video['id'])
 
                             # Adicionar outros recursos gerais
                             for _ in range(min(1, len(remaining_resources))):
@@ -180,7 +196,10 @@ class TreeBasedNodeStructure(NodeStructureService):
                                     resource = random.choice(remaining_resources)
                                     node_resources.append(resource)
                                     remaining_resources.remove(resource)
-                                    used_resource_ids.add(resource.id)
+                                    if hasattr(resource, 'id'):
+                                        used_resource_ids.add(resource.id)
+                                    elif isinstance(resource, dict) and 'id' in resource:
+                                        used_resource_ids.add(resource['id'])
 
                             # Determine node type
                             if level == branch_length - 1 and random.random() < 0.5:
@@ -229,7 +248,10 @@ class TreeBasedNodeStructure(NodeStructureService):
                     resource = random.choice(remaining_resources)
                     node_resources.append(resource)
                     remaining_resources.remove(resource)
-                    used_resource_ids.add(resource.id)
+                    if hasattr(resource, 'id'):
+                        used_resource_ids.add(resource.id)
+                    elif isinstance(resource, dict) and 'id' in resource:
+                        used_resource_ids.add(resource['id'])
 
             # Create the node
             node = Node(
@@ -310,6 +332,64 @@ class TreeBasedNodeStructure(NodeStructureService):
             node.quiz = self.quiz_generator.generate_quiz(topic, node.title, node_resources)
 
         self.logger.info(f"Distributed {len(quiz_nodes)} quizzes across {num_nodes} nodes")
+        return nodes
+
+    def distribute_exercises(
+        self,
+        nodes: Dict[str, Node],
+        node_ids: List[str],
+        topic: str,
+        resources: List[Resource],
+        target_percentage: float = 0.15
+    ) -> Dict[str, Node]:
+        """
+        Distribute exercises strategically across the learning tree.
+
+        Args:
+            nodes: Dictionary of nodes
+            node_ids: List of node IDs
+            topic: The main topic
+            resources: List of resources
+            target_percentage: Target percentage of nodes to have exercises
+
+        Returns:
+            Updated dictionary of nodes
+        """
+        # Check if exercise generator is available
+        if not self.exercise_generator:
+            self.logger.warning("Exercise generator not available, skipping exercise distribution")
+            return nodes
+
+        # Calculate target number of exercise sets
+        num_nodes = len(nodes)
+        target_exercises = max(1, int(num_nodes * target_percentage))
+
+        # Identify root node
+        root_id = node_ids[0] if node_ids else None
+        if not root_id:
+            return nodes
+
+        # Map the tree structure
+        tree_map = self._map_tree_structure(nodes, root_id)
+
+        # Identify branches (paths from root to leaf)
+        branches = self._identify_branches(tree_map, root_id)
+
+        # Categorize nodes by level
+        levels = self._categorize_nodes_by_level(nodes)
+
+        # Select nodes for exercises (prioritize nodes of type "exercise_set")
+        exercise_nodes = self._select_exercise_nodes(nodes, branches, levels, target_exercises)
+
+        # Apply exercises to selected nodes
+        for node_id in exercise_nodes:
+            node = nodes[node_id]
+            # Get resources for this node
+            node_resources = node.resources
+            # Generate an exercise set based on node resources
+            node.exerciseSet = self.exercise_generator.generate_exercise_set(topic, node.title, node_resources)
+
+        self.logger.info(f"Distributed {len(exercise_nodes)} exercise sets across {num_nodes} nodes")
         return nodes
 
     def _map_tree_structure(self, nodes: Dict[str, Node], _root_id: str) -> Dict[str, List[str]]:
@@ -479,3 +559,91 @@ class TreeBasedNodeStructure(NodeStructureService):
             i += 2
 
         return selected
+
+    def get_nodes(self) -> Dict[str, Node]:
+        """
+        Get the current nodes dictionary.
+
+        Returns:
+            Dictionary of nodes
+        """
+        # This is a simple implementation that returns an empty dictionary
+        # In a real implementation, we would store the nodes as an instance variable
+        # and return them here
+        return {}
+
+    def _select_exercise_nodes(self, nodes: Dict[str, Node], branches: List[List[str]], levels: Dict[str, List[str]], target_exercises: int) -> List[str]:
+        """
+        Select nodes for exercises ensuring even distribution and prioritizing nodes of type "exercise_set".
+
+        Args:
+            nodes: Dictionary of nodes
+            branches: List of branches (each branch is a list of node IDs)
+            levels: Dictionary mapping level names to lists of node IDs
+            target_exercises: Target number of exercise sets
+
+        Returns:
+            List of node IDs selected for exercises
+        """
+        selected_nodes = set()
+
+        # First, prioritize nodes of type "exercise_set"
+        exercise_set_nodes = [node_id for node_id, node in nodes.items() if node.type == "exercise_set"]
+
+        # Add all exercise_set nodes (up to the target)
+        for node_id in exercise_set_nodes:
+            if len(selected_nodes) >= target_exercises:
+                break
+            selected_nodes.add(node_id)
+
+        # If we still need more, ensure at least one exercise per branch (if possible)
+        if len(selected_nodes) < target_exercises:
+            for branch in branches:
+                if len(selected_nodes) >= target_exercises:
+                    break
+
+                # Skip very short branches
+                if len(branch) <= 2:
+                    continue
+
+                # Select a node near the end of the branch (for practical exercises after learning)
+                end_index = len(branch) - 1
+                candidate = branch[end_index]
+
+                # Skip if already selected or if it has a quiz
+                if candidate in selected_nodes or nodes[candidate].quiz:
+                    continue
+
+                selected_nodes.add(candidate)
+
+        # Distribute remaining exercises across levels, prioritizing intermediate and advanced
+        remaining = target_exercises - len(selected_nodes)
+        if remaining > 0:
+            # Calculate distribution across levels
+            level_quotas = {
+                "beginner": max(0, int(remaining * 0.1)),
+                "intermediate": max(1, int(remaining * 0.5)),
+                "advanced": max(1, int(remaining * 0.4))
+            }
+
+            # Adjust to ensure sum equals remaining
+            total = sum(level_quotas.values())
+            if total > remaining:
+                # Reduce quotas proportionally
+                for level in level_quotas:
+                    level_quotas[level] = max(0, int(level_quotas[level] * (remaining / total)))
+
+            # Select nodes from each level
+            for level, quota in level_quotas.items():
+                candidates = [node_id for node_id in levels[level]
+                             if node_id not in selected_nodes and not nodes[node_id].quiz]
+
+                # Skip if no candidates
+                if not candidates:
+                    continue
+
+                # Select nodes with spacing
+                selected = self._select_with_spacing(candidates, quota, nodes)
+                selected_nodes.update(selected)
+
+        return list(selected_nodes)

@@ -1,260 +1,286 @@
-# Plano de Refatoração do MCP Server
+# Plano de Melhorias para o MCP Server
 
-Este documento detalha o plano de refatoração do MCP Server para aplicar os princípios SOLID, melhorar a performance e resolver os bottlenecks identificados.
+Este documento apresenta um plano estruturado para melhorar significativamente a qualidade do conteúdo gerado pelo MCP Server, com foco em produzir árvores de aprendizado de alta qualidade que possam ser monetizadas.
 
 ## Visão Geral
 
-A refatoração será dividida em 5 fases principais, cada uma com tarefas específicas. O objetivo é transformar a arquitetura atual em uma estrutura modular, testável e extensível, mantendo a simplicidade.
+O objetivo é transformar o MCP Server em uma plataforma capaz de gerar árvores de aprendizado com conteúdo relevante, estruturado logicamente e de alta qualidade educacional. As melhorias serão implementadas em fases, priorizando os problemas mais críticos.
 
-## Estrutura de Pastas Alvo
+## Fase 1: Melhorar a Relevância dos Recursos
 
-```
-mcp_server/
-│
-├── api/                    # Endpoints da API
-│   ├── __init__.py
-│   ├── endpoints.py        # Definição dos endpoints
-│   ├── models.py           # Modelos de dados para a API
-│   └── dependencies.py     # Dependências da API (validação, etc.)
-│
-├── core/                   # Lógica de negócio principal
-│   ├── __init__.py
-│   ├── path_generator.py   # Geração de árvores de aprendizagem
-│   ├── content_manager.py  # Gerenciamento de conteúdo
-│   └── task_manager.py     # Sistema de tarefas assíncronas
-│
-├── services/               # Serviços externos e integrações
-│   ├── __init__.py
-│   ├── search/             # Serviços de busca
-│   ├── scraping/           # Serviços de scraping
-│   ├── youtube/            # Integração com YouTube
-│   └── categories/         # Sistema de categorias
-│
-├── infrastructure/         # Componentes de infraestrutura
-│   ├── __init__.py
-│   ├── cache/              # Sistema de cache
-│   ├── logging/            # Sistema de logging
-│   └── config/             # Configurações
-│
-├── utils/                  # Utilitários
-│   ├── __init__.py
-│   ├── concurrency.py      # Utilitários para concorrência
-│   └── validators.py       # Validadores
-│
-├── docs/                   # Documentação
-├── tests/                  # Testes
-├── main.py                 # Ponto de entrada da aplicação
-├── requirements.txt        # Dependências
-└── README.md               # Documentação principal
-```
+### Tarefa 1.1: Aprimorar o Sistema de Busca
 
-## Fases e Tarefas
+- [x] **1.1.1**: Implementar filtros de relevância baseados em análise semântica ✅
+  - Utilizar embeddings para comparar a similaridade semântica entre o tópico e os resultados da busca
+  - Estabelecer um limiar mínimo de similaridade para inclusão de recursos
 
-### Fase 1: Preparação e Estruturação ✅
+### Tarefa 1.2: Diversificar as Fontes de Recursos
 
-#### Tarefa 1.1: Criar a nova estrutura de diretórios ✅
+- [ ] **1.2.1**: Melhorar a integração com fontes existentes
+  - Otimizar a extração de dados do YouTube para obter resultados mais relevantes
+  - Implementar integração com repositórios de documentação gratuita
+- [ ] **1.2.2**: Implementar busca em sites especializados por categoria
+  - Criar conectores para sites específicos de cada categoria (ex: sites de culinária para tópicos de gastronomia)
+  - Desenvolver scrapers específicos para extrair conteúdo estruturado desses sites
 
-- **1.1.1**: Criar os diretórios principais (api, core, services, infrastructure, utils, tests) ✅
-- **1.1.2**: Criar os subdiretórios em services (search, scraping, youtube, categories) ✅
-- **1.1.3**: Criar os subdiretórios em infrastructure (cache, logging, config) ✅
-- **1.1.4**: Criar os subdiretórios em tests (unit, integration) ✅
-- **1.1.5**: Adicionar arquivos **init**.py em todos os diretórios ✅
+### Tarefa 1.3: Melhorar a Extração de Metadados
 
-#### Tarefa 1.2: Definir interfaces abstratas ✅
+- [ ] **1.3.1**: Aprimorar a extração de descrições de conteúdo
+  - Implementar técnicas de NLP para gerar descrições significativas quando não disponíveis
+  - Criar sistema de validação de descrições para garantir relevância
+- [ ] **1.3.2**: Garantir extração completa de metadados de vídeos
+  - Corrigir a extração de duração, thumbnails e outros metadados do YouTube
+  - Implementar fallbacks para quando a API do YouTube não retornar dados completos
+- [ ] **1.3.3**: Desenvolver sistema de categorização automática de recursos
+  - Criar classificador para identificar o tipo correto de recurso (artigo, vídeo, tutorial, etc.)
+  - Implementar detecção de nível de dificuldade baseada no conteúdo
 
-- **1.2.1**: Criar interface abstrata para o sistema de cache (CacheService) ✅
-- **1.2.2**: Criar interface abstrata para o sistema de scraping (ScraperService) ✅
-- **1.2.3**: Criar interface abstrata para o sistema de busca (SearchService) ✅
-- **1.2.4**: Criar interface abstrata para a integração com YouTube (YouTubeService) ✅
-- **1.2.5**: Criar interface abstrata para o sistema de categorias (CategoryService) ✅
+## Fase 2: Aprimorar a Geração de Quizzes
 
-#### Tarefa 1.3: Configurar ambiente de desenvolvimento ✅
+### Tarefa 2.1: Melhorar a Geração de Perguntas
 
-- **1.3.1**: Atualizar requirements.txt com dependências necessárias ✅
-- **1.3.2**: Configurar ambiente de testes ✅
-- **1.3.3**: Criar scripts de utilidade para desenvolvimento ✅
+- [ ] **2.1.1**: Implementar extração de conceitos-chave dos recursos
+  - Desenvolver sistema de extração de entidades e conceitos importantes do conteúdo
+  - Criar banco de dados de conceitos por domínio de conhecimento
+- [ ] **2.1.2**: Criar templates de perguntas específicos por domínio
+  - Desenvolver templates de perguntas adaptados a diferentes categorias (tecnologia, culinária, idiomas, etc.)
+  - Implementar sistema de seleção de templates baseado no contexto
+- [ ] **2.1.3**: Utilizar LLMs para geração de perguntas contextuais
+  - Integrar modelos como GPT-4 para gerar perguntas baseadas no conteúdo real dos recursos
+  - Implementar sistema de validação para garantir qualidade das perguntas
 
-### Fase 2: Refatoração dos Componentes de Infraestrutura ✅
+### Tarefa 2.2: Melhorar as Opções de Resposta
 
-#### Tarefa 2.1: Refatorar o Sistema de Cache ✅
+- [ ] **2.2.1**: Gerar opções de resposta específicas para cada pergunta
+  - Desenvolver sistema para criar alternativas plausíveis baseadas no conteúdo
+  - Implementar técnicas para garantir que as opções sejam distintas entre si
+- [ ] **2.2.2**: Balancear a dificuldade das opções
+  - Criar sistema para avaliar e ajustar a dificuldade das alternativas
+  - Implementar variação de dificuldade baseada no nível do nó na árvore
+- [ ] **2.2.3**: Implementar validação de qualidade das opções
+  - Desenvolver métricas para avaliar a qualidade das opções geradas
+  - Criar sistema de feedback para melhorar a geração ao longo do tempo
 
-- **2.1.1**: Implementar MemoryCache baseado no atual simple_cache.py ✅
-- **2.1.2**: Adicionar funcionalidades de TTL (Time-To-Live) e LRU (Least Recently Used) ✅
-- **2.1.3**: Preparar estrutura para futura implementação de RedisCache ✅
-- **2.1.4**: Implementar mecanismos de serialização/deserialização eficientes ✅
-- **2.1.5**: Adicionar métricas de uso do cache (hit rate, miss rate, etc.) ✅
+### Tarefa 2.3: Aprimorar a Determinação da Resposta Correta
 
-#### Tarefa 2.2: Refatorar o Sistema de Logging ✅
+- [ ] **2.3.1**: Desenvolver sistema para identificar respostas corretas com base no conteúdo
+  - Implementar análise de conteúdo para determinar a resposta correta
+  - Criar sistema de verificação cruzada entre múltiplos recursos
+- [ ] **2.3.2**: Implementar validação de consistência das respostas
+  - Desenvolver verificações para garantir que a resposta marcada como correta seja realmente a mais adequada
+  - Criar sistema de detecção de ambiguidades nas perguntas e respostas
+- [ ] **2.3.3**: Criar sistema de feedback para melhoria contínua
+  - Implementar mecanismo para coletar feedback dos usuários sobre os quizzes
+  - Desenvolver sistema de aprendizado para melhorar a geração com base no feedback
 
-- **2.2.1**: Criar um sistema de logging centralizado ✅
-- **2.2.2**: Implementar diferentes níveis de log (DEBUG, INFO, WARNING, ERROR) ✅
-- **2.2.3**: Adicionar formatação consistente para logs ✅
-- **2.2.4**: Implementar rotação de logs para evitar arquivos muito grandes ✅
-- **2.2.5**: Adicionar contexto aos logs para facilitar depuração ✅
+## Fase 3: Melhorar a Estrutura e Organização da Árvore
 
-#### Tarefa 2.3: Refatorar o Sistema de Configuração ✅
+### Tarefa 3.1: Aprimorar a Geração de Subtópicos
 
-- **2.3.1**: Centralizar configurações em settings.py ✅
-- **2.3.2**: Implementar carregamento de configurações de diferentes fontes (env, arquivo, etc.) ✅
-- **2.3.3**: Adicionar validação de configurações ✅
-- **2.3.4**: Implementar configurações específicas para diferentes ambientes (dev, test, prod) ✅
-- **2.3.5**: Documentar todas as opções de configuração ✅
+- [ ] **3.1.1**: Implementar geração de subtópicos baseada em taxonomias de domínio
+  - Criar bancos de dados de taxonomias para diferentes áreas de conhecimento
+  - Desenvolver sistema para mapear tópicos solicitados às taxonomias existentes
+- [ ] **3.1.2**: Eliminar duplicação de subtópicos
+  - Implementar detecção de similaridade semântica entre subtópicos
+  - Criar sistema de mesclagem para tópicos similares
+- [ ] **3.1.3**: Garantir cobertura abrangente do tópico principal
+  - Desenvolver verificação de completude para garantir que aspectos importantes não sejam omitidos
+  - Implementar sistema de sugestão de subtópicos faltantes
 
-### Fase 3: Refatoração dos Serviços ✅
+### Tarefa 3.2: Melhorar a Progressão Lógica de Aprendizado
 
-#### Tarefa 3.1: Refatorar o Sistema de Scraping (Prioridade Alta) ✅
+- [ ] **3.2.1**: Implementar ordenação lógica de nós
+  - Desenvolver algoritmo para ordenar nós do básico ao avançado
+  - Criar sistema de dependências entre conceitos para estruturar a progressão
+- [ ] **3.2.2**: Balancear a distribuição de nós por nível
+  - Implementar controle de largura e profundidade da árvore
+  - Desenvolver heurísticas para distribuição equilibrada de conteúdo
+- [ ] **3.2.3**: Criar caminhos de aprendizado alternativos
+  - Implementar múltiplos caminhos possíveis através da árvore
+  - Desenvolver sistema de recomendação de caminho baseado no perfil do usuário
 
-- **3.1.1**: Implementar PuppeteerScraper baseado no atual adaptive_scraper.py ✅
-- **3.1.2**: Melhorar o pool de instâncias Puppeteer para reutilização eficiente ✅
-- **3.1.3**: Implementar RequestsScraper para sites mais simples ✅
-- **3.1.4**: Adicionar sistema de fallback entre diferentes métodos de scraping ✅
-- **3.1.5**: Implementar limites de concorrência e rate limiting por domínio ✅
-- **3.1.6**: Adicionar cache de resultados de scraping ✅
-- **3.1.7**: Implementar timeout adaptativo baseado no histórico do site ✅
-- **3.1.8**: Adicionar sistema de retry com backoff exponencial ✅
+### Tarefa 3.3: Aprimorar o Sistema de Categorização
 
-#### Tarefa 3.2: Refatorar o Sistema de Busca ✅
+- [ ] **3.3.1**: Melhorar a detecção automática de categorias
+  - Implementar classificador de categorias baseado em machine learning
+  - Criar sistema de verificação cruzada com múltiplas fontes
+- [ ] **3.3.2**: Expandir o conjunto de categorias disponíveis
+  - Desenvolver taxonomia detalhada de categorias e subcategorias
+  - Implementar sistema hierárquico de categorização
+- [ ] **3.3.3**: Personalizar a estrutura da árvore por categoria
+  - Criar templates de estrutura específicos para diferentes categorias
+  - Implementar regras de geração adaptadas a cada domínio de conhecimento
 
-- **3.2.1**: Implementar DuckDuckGoSearch baseado no código atual ✅
-- **3.2.2**: Preparar para implementações alternativas (Brave Search) ✅
-- **3.2.3**: Adicionar sistema de fallback entre diferentes engines de busca ✅
-- **3.2.4**: Implementar cache de resultados de busca ✅
-- **3.2.5**: Adicionar rate limiting para evitar bloqueios ✅
-- **3.2.6**: Melhorar a qualidade dos resultados com parâmetros de busca otimizados ✅
-- **3.2.7**: Implementar busca em paralelo em múltiplas engines ✅
+## Fase 4: Enriquecer o Conteúdo
 
-#### Tarefa 3.3: Refatorar a Integração com YouTube (Prioridade Alta) ✅
+### Tarefa 4.1: Adicionar Recursos Específicos por Domínio
 
-- **3.3.1**: Implementar YtDlpService baseado no atual youtube_integration.py ✅
-- **3.3.2**: Otimizar a busca de vídeos para reduzir o uso de recursos ✅
-- **3.3.3**: Implementar cache de resultados de busca no YouTube ✅
-- **3.3.4**: Adicionar fallback para a API oficial do YouTube quando disponível ✅
-- **3.3.5**: Implementar busca em paralelo com limite de concorrência ✅
-- **3.3.6**: Melhorar a relevância dos vídeos retornados ✅
-- **3.3.7**: Adicionar extração de metadados adicionais (duração, visualizações, etc.) ✅
+- [ ] **4.1.1**: Implementar bancos de dados de recursos essenciais por categoria
+  - Criar listas curadas de recursos fundamentais para cada área de conhecimento
+  - Desenvolver sistema para incluir esses recursos prioritariamente
+- [ ] **4.1.2**: Adicionar suporte para recursos interativos
+  - Implementar integração com plataformas de exercícios interativos
+  - Criar sistema para incluir simuladores e ambientes práticos quando relevantes
+- [ ] **4.1.3**: Incluir recursos de referência e glossários
+  - Desenvolver geração automática de glossários para termos importantes
+  - Implementar inclusão de recursos de referência rápida
 
-#### Tarefa 3.4: Refatorar o Sistema de Categorias ✅
+### Tarefa 4.2: [ADIADO] Melhorar a Qualidade das Descrições
 
-- **3.4.1**: Implementar CategoryDetector baseado no atual categories.py ✅
-- **3.4.2**: Melhorar a detecção automática de categorias ✅
-- **3.4.3**: Adicionar suporte para categorias personalizadas ✅
-- **3.4.4**: Implementar cache de categorias detectadas ✅
-- **3.4.5**: Adicionar hierarquia de categorias (categorias e subcategorias) ✅
+- [ ] **4.2.1**: [ADIADO] Implementar extração básica de descrições
+  - Extrair descrições existentes dos recursos quando disponíveis
+  - Garantir formatação consistente das descrições
+- [ ] **4.2.2**: [ADIADO] Adicionar informações básicas de dificuldade
+  - Implementar classificação simples de nível (iniciante, intermediário, avançado)
+  - Exibir essa informação de forma clara na interface
+- [ ] **4.2.3**: [ADIADO] Incluir informações básicas de qualidade
+  - Extrair métricas simples como visualizações e data de publicação
+  - Exibir essas informações quando disponíveis
 
-### Fase 4: Refatoração da Lógica de Negócio ✅
+### Tarefa 4.3: Implementar Sistema de Exercícios Práticos Simples ✅
 
-#### Tarefa 4.1: Refatorar o Gerador de Caminhos ✅
+- [x] **4.3.1**: Adicionar exercícios práticos básicos
+  - Criar conjunto de exercícios simples para diferentes tipos de conteúdo
+  - Associar exercícios relevantes aos nós da árvore de aprendizado
+- [x] **4.3.2**: Implementar sistema de dicas para exercícios
+  - Adicionar dicas contextuais para ajudar na resolução dos exercícios
+  - Criar sistema de revelação progressiva de dicas
+- [x] **4.3.3**: Desenvolver verificação básica de respostas
+  - Implementar sistema simples de verificação para exercícios de múltipla escolha
+  - Fornecer feedback imediato sobre acertos e erros
 
-- **4.1.1**: Refatorar path_generator.py para seguir o princípio de responsabilidade única ✅
-- **4.1.2**: Separar a lógica de geração de árvores da lógica de formatação ✅
-- **4.1.3**: Implementar diferentes estratégias de geração de árvores ✅
-- **4.1.4**: Melhorar o algoritmo de distribuição de nós ✅
-- **4.1.5**: Adicionar validação de árvores geradas ✅
-- **4.1.6**: Implementar cache de árvores geradas ✅
-- **4.1.7**: Otimizar o algoritmo para reduzir o tempo de processamento ✅
+## Fase 5: Corrigir Problemas Técnicos e Otimizar Performance
 
-#### Tarefa 4.2: Refatorar o Gerenciador de Conteúdo ✅
+### Tarefa 5.1: Melhorar a Validação de Dados
 
-- **4.2.1**: Criar content_manager.py para encapsular a lógica de content_sourcing.py ✅
-- **4.2.2**: Separar a busca, filtragem e processamento de recursos ✅
-- **4.2.3**: Implementar sistema de priorização de recursos ✅
-- **4.2.4**: Melhorar a relevância dos recursos retornados ✅
-- **4.2.5**: Adicionar suporte para diferentes tipos de recursos ✅
-- **4.2.6**: Implementar cache de recursos ✅
-- **4.2.7**: Otimizar o processamento de recursos para reduzir o tempo de resposta ✅
+- [ ] **5.1.1**: Implementar validação rigorosa de URLs
+  - Desenvolver sistema para verificar e corrigir URLs mal formatadas
+  - Criar verificação de disponibilidade dos recursos antes de incluí-los
+- [ ] **5.1.2**: Aprimorar a validação de metadados
+  - Implementar verificações de integridade para todos os campos de metadados
+  - Criar sistema de preenchimento inteligente para dados faltantes
+- [ ] **5.1.3**: Desenvolver sistema de detecção de conteúdo duplicado
+  - Implementar detecção de recursos que apontam para o mesmo conteúdo
+  - Criar mecanismo para mesclar ou selecionar o melhor recurso em caso de duplicação
 
-#### Tarefa 4.3: Refatorar o Gerenciador de Tarefas ✅
+### Tarefa 5.2: Otimizar o Desempenho do Sistema
 
-- **4.3.1**: Melhorar o sistema de tarefas assíncronas em task_manager.py ✅
-- **4.3.2**: Implementar melhor controle de concorrência ✅
-- **4.3.3**: Adicionar sistema de priorização de tarefas ✅
-- **4.3.4**: Implementar timeout e cancelamento de tarefas ✅
-- **4.3.5**: Melhorar o feedback de progresso em tempo real ✅
-- **4.3.6**: Adicionar persistência de tarefas para recuperação após reinicialização ✅
-- **4.3.7**: Implementar limpeza automática de tarefas antigas ✅
+- [ ] **5.2.1**: Implementar sistema de cache distribuído
+  - Desenvolver cache de resultados de busca com invalidação inteligente
+  - Criar sistema de armazenamento de árvores geradas para reutilização
+- [ ] **5.2.2**: Otimizar o processo de scraping
+  - Implementar scraping paralelo e assíncrono
+  - Desenvolver sistema de priorização de fontes mais rápidas
+- [ ] **5.2.3**: Melhorar o gerenciamento de recursos computacionais
+  - Implementar controle dinâmico de concorrência baseado na carga do sistema
+  - Criar sistema de filas para gerenciar picos de demanda
 
-### Fase 5: Refatoração da API e Finalização
+### Tarefa 5.3: Implementar Monitoramento e Melhoria Contínua
 
-#### Tarefa 5.1: Refatorar os Endpoints ✅
+- [ ] **5.3.1**: Desenvolver sistema de métricas de qualidade
+  - Criar indicadores para medir a qualidade das árvores geradas
+  - Implementar dashboard para monitoramento contínuo
+- [ ] **5.3.2**: Implementar sistema de feedback dos usuários
+  - Desenvolver mecanismos para coletar avaliações sobre recursos e quizzes
+  - Criar sistema para incorporar feedback na melhoria do algoritmo
+- [ ] **5.3.3**: Estabelecer processo de revisão periódica
+  - Implementar verificações automáticas de qualidade
+  - Criar sistema de alertas para problemas recorrentes
 
-- **5.1.1**: Mover a definição de endpoints para api/endpoints.py ✅
-- **5.1.2**: Separar a lógica de roteamento da lógica de negócio ✅
-- **5.1.3**: Implementar versionamento de API ✅
-- **5.1.4**: Melhorar a documentação dos endpoints ✅
-- **5.1.5**: Adicionar validação de parâmetros ✅
-- **5.1.6**: Implementar tratamento de erros consistente ✅
-- **5.1.7**: Adicionar rate limiting para endpoints públicos ✅
+## Fase 6: Preparação para Monetização
 
-#### Tarefa 5.2: Refatorar os Modelos de Dados ✅
+### Tarefa 6.1: Preparar Estrutura para Monetização Futura
 
-- **5.2.1**: Mover os modelos de dados para api/models.py ✅
-- **5.2.2**: Melhorar a validação de dados ✅
-- **5.2.3**: Implementar serialização/deserialização eficiente ✅
-- **5.2.4**: Adicionar documentação para cada modelo ✅
-- **5.2.5**: Implementar conversão entre diferentes formatos (JSON, dict, etc.) ✅
+- [ ] **6.1.1**: Desenvolver sistema de marcação de conteúdo de qualidade
+  - Criar mecanismo para identificar recursos de alta qualidade
+  - Implementar sistema de classificação de árvores por qualidade
+- [ ] **6.1.2**: Preparar arquitetura para futura implementação de assinaturas
+  - Desenvolver estrutura de dados que suporte diferentes níveis de acesso
+  - Criar documentação técnica para futura integração com sistemas de pagamento
+- [ ] **6.1.3**: Implementar sistema de estatísticas de uso
+  - Criar mecanismo para rastrear métricas de utilização
+  - Desenvolver dashboard para análise de engajamento
 
-#### Tarefa 5.3: Implementar Testes ✅
+### Tarefa 6.2: Desenvolver Recursos Exclusivos
 
-- **5.3.1**: Criar testes unitários para cada componente ✅
-- **5.3.2**: Criar testes de integração para verificar a interação entre componentes ✅
-- **5.3.3**: Implementar testes de performance ✅
-- **5.3.4**: Configurar CI/CD para execução automática de testes ✅
-- **5.3.5**: Adicionar cobertura de código ✅
+- [ ] **6.2.1**: Implementar geração de materiais complementares
+  - Criar sistema para gerar resumos, flashcards e materiais de estudo
+  - Desenvolver mecanismo para personalização de materiais
+- [ ] **6.2.2**: Adicionar suporte para certificações
+  - Implementar sistema de avaliação final para certificação
+  - Criar mecanismo de geração de certificados personalizados
+- [ ] **6.2.3**: Desenvolver recursos de acompanhamento de progresso
+  - Criar sistema de tracking de avanço na árvore de aprendizado
+  - Implementar estatísticas e visualizações de progresso
 
-#### Tarefa 5.4: Atualizar Documentação ✅
+### Tarefa 6.3: Preparar Estratégia de Marketing
 
-- **5.4.1**: Atualizar README.md com a nova estrutura ✅
-- **5.4.2**: Criar documentação para cada componente ✅
-- **5.4.3**: Atualizar a documentação da API ✅
-- **5.4.4**: Criar guias de contribuição ✅
-- **5.4.5**: Documentar o processo de desenvolvimento ✅
+- [ ] **6.3.1**: Implementar geração de árvores demonstrativas
+  - Criar sistema para gerar árvores de alta qualidade para demonstração
+  - Desenvolver mecanismo de compartilhamento de árvores
+- [ ] **6.3.2**: Desenvolver sistema de recomendação personalizada
+  - Criar algoritmo para sugerir árvores baseadas no histórico do usuário
+  - Implementar descoberta de tópicos relacionados
+- [ ] **6.3.3**: Preparar integração com plataformas educacionais
+  - Desenvolver APIs para integração com LMS (Learning Management Systems)
+  - Criar documentação e exemplos para desenvolvedores externos
 
-## Priorização
+## Priorização e Cronograma
 
-Baseado nos bottlenecks identificados, a priorização da refatoração será:
+### Prioridade Alta (Implementação Imediata)
 
-1. **Sistema de Scraping** (Tarefa 3.1) - Maior bottleneck
-2. **Sistema de Cache** (Tarefa 2.1) - Crítico para performance
-3. **Integração com YouTube** (Tarefa 3.3) - Intensivo em recursos
-4. **Sistema de Busca** (Tarefa 3.2) - Alto volume de requisições
-5. **Gerador de Caminhos** (Tarefa 4.1) - Complexidade algorítmica
-6. **Gerenciador de Tarefas** (Tarefa 4.3) - Concorrência e assincronicidade
-7. **API e Modelos** (Tarefas 5.1 e 5.2) - Interface com o usuário
+- Fase 1: Melhorar a Relevância dos Recursos (especialmente Tarefas 1.1 e 1.3)
+- Fase 2: Aprimorar a Geração de Quizzes (especialmente Tarefas 2.1 e 2.3)
+- Fase 3: Melhorar a Estrutura e Organização da Árvore (especialmente Tarefas 3.1 e 3.2)
 
-## Estimativa de Tempo
+### Prioridade Média (Segunda Onda de Implementação)
 
-- **Fase 1**: 1-2 dias
-- **Fase 2**: 3-5 dias
-- **Fase 3**: 5-7 dias
-- **Fase 4**: 4-6 dias
-- **Fase 5**: 3-5 dias
+- Fase 4: Enriquecer o Conteúdo (especialmente Tarefa 4.1)
+- Fase 5: Corrigir Problemas Técnicos e Otimizar Performance (especialmente Tarefa 5.1)
+- Tarefa 1.2: Diversificar as Fontes de Recursos
+- Tarefa 4.3: Implementar Sistema de Exercícios Práticos Simples
 
-**Total estimado**: 16-25 dias de trabalho
+### Prioridade Baixa (Implementação Final)
+
+- Fase 6: Preparação para Monetização
+- Tarefas 5.2 e 5.3: Otimização de Performance e Monitoramento
+- Tarefa 4.2: [ADIADO] Melhorar a Qualidade das Descrições
 
 ## Métricas de Sucesso
 
-- Redução do tempo médio de resposta em pelo menos 30%
-- Aumento da taxa de sucesso na geração de MCPs para pelo menos 95%
-- Redução do uso de memória em pelo menos 20%
-- Cobertura de testes de pelo menos 80%
-- Código mais modular e fácil de manter (medido por métricas de complexidade)
+Para avaliar o sucesso das melhorias implementadas, serão utilizadas as seguintes métricas:
 
-## Riscos e Mitigações
+1. **Relevância dos Recursos**:
 
-### Riscos
+   - Percentual de recursos diretamente relacionados ao tópico (meta: >95%)
+   - Taxa de recursos no idioma solicitado (meta: >98%)
 
-1. **Regressões funcionais**: A refatoração pode introduzir bugs ou alterar o comportamento existente
-2. **Complexidade excessiva**: A aplicação dos princípios SOLID pode levar a uma estrutura muito complexa
-3. **Tempo de desenvolvimento**: A refatoração pode levar mais tempo que o estimado
-4. **Dependências externas**: Mudanças em APIs externas podem afetar a refatoração
+2. **Qualidade dos Quizzes**:
 
-### Mitigações
+   - Percentual de perguntas específicas ao conteúdo (não genéricas) (meta: >90%)
+   - Taxa de aprovação das perguntas por revisores humanos (meta: >85%)
 
-1. **Testes abrangentes**: Implementar testes antes e durante a refatoração
-2. **Refatoração incremental**: Refatorar um componente por vez e validar antes de prosseguir
-3. **Revisões de código**: Realizar revisões frequentes para garantir a qualidade
-4. **Documentação detalhada**: Documentar todas as mudanças e decisões de design
+3. **Estrutura da Árvore**:
+
+   - Taxa de duplicação de nós (meta: <1%)
+   - Pontuação de coerência na progressão lógica (meta: >8/10)
+
+4. **Qualidade do Conteúdo**:
+
+   - Diversidade de tipos de recursos (meta: pelo menos 4 tipos diferentes por árvore)
+   - Completude da cobertura do tópico (meta: >90% dos conceitos essenciais cobertos)
+
+5. **Performance Técnica**:
+
+   - Taxa de URLs válidas (meta: >99%)
+   - Completude dos metadados (meta: >95% dos campos preenchidos corretamente)
+
+6. **Satisfação do Usuário**:
+   - Avaliação média das árvores geradas (meta: >4.5/5)
+   - Taxa de retenção de usuários (meta: >70% retornam em 30 dias)
 
 ## Conclusão
 
-Este plano de refatoração visa transformar o MCP Server em uma aplicação mais robusta, performática e fácil de manter, aplicando os princípios SOLID de forma pragmática. A abordagem incremental permitirá entregar valor continuamente enquanto reduz os riscos associados a grandes refatorações.
+Este plano de melhorias visa transformar o MCP Server em uma plataforma de alta qualidade capaz de gerar árvores de aprendizado que possam ser monetizadas. A implementação sistemática das tarefas descritas resultará em um produto significativamente superior, oferecendo valor real aos usuários e criando oportunidades de receita.
+
+A abordagem faseada permite priorizar as melhorias mais críticas enquanto estabelece uma visão clara para o desenvolvimento futuro. O sucesso deste plano dependerá da execução cuidadosa de cada tarefa e da avaliação contínua dos resultados obtidos.

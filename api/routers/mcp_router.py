@@ -66,7 +66,8 @@ class MCPRouter(BaseRouter):
         min_height: Optional[int] = Query(3, ge=2, le=8, description="Minimum height of the tree (depth)"),
         max_height: Optional[int] = Query(7, ge=3, le=12, description="Maximum height of the tree (depth)"),
         language: Optional[str] = Query("pt", description="Language for resources (e.g., 'pt', 'en', 'es')"),
-        category: Optional[str] = Query(None, description="Category for the topic (e.g., 'technology', 'finance', 'health'). If not provided, it will be detected automatically.")
+        category: Optional[str] = Query(None, description="Category for the topic (e.g., 'technology', 'finance', 'health'). If not provided, it will be detected automatically."),
+        similarity_threshold: Optional[float] = Query(0.15, ge=0.0, le=1.0, description="Minimum semantic similarity threshold for filtering resources (0-1)")
     ):
         """
         Generate a Master Content Plan (MCP) for a given topic.
@@ -80,7 +81,7 @@ class MCPRouter(BaseRouter):
             self.logger.info(f"Received request for topic: {topic}")
 
             # Check cache first
-            cache_key = f"mcp:{topic}_{max_resources}_{num_nodes}_{min_width}_{max_width}_{min_height}_{max_height}_{language}_{category}"
+            cache_key = f"mcp:{topic}_{max_resources}_{num_nodes}_{min_width}_{max_width}_{min_height}_{max_height}_{language}_{category}_{similarity_threshold}"
             cached_mcp = cache.get(cache_key)
             if cached_mcp:
                 self.logger.info(f"Returning cached MCP for topic: {topic}")
@@ -88,7 +89,13 @@ class MCPRouter(BaseRouter):
 
             # Find resources
             self.logger.info(f"Finding resources for topic: {topic} in language: {language}")
-            resources = await content_source.find_resources(topic, max_results=max_resources, language=language, category=category)
+            resources = await content_source.find_resources(
+                topic,
+                max_results=max_resources,
+                language=language,
+                category=category,
+                similarity_threshold=similarity_threshold
+            )
 
             if not resources:
                 self.logger.warning(f"No resources found for topic: {topic}")
@@ -131,7 +138,8 @@ class MCPRouter(BaseRouter):
         min_height: Optional[int] = Query(3, ge=2, le=8, description="Minimum height of the tree (depth)"),
         max_height: Optional[int] = Query(7, ge=3, le=12, description="Maximum height of the tree (depth)"),
         language: Optional[str] = Query("pt", description="Language for resources (e.g., 'pt', 'en', 'es')"),
-        category: Optional[str] = Query(None, description="Category for the topic (e.g., 'technology', 'finance', 'health'). If not provided, it will be detected automatically.")
+        category: Optional[str] = Query(None, description="Category for the topic (e.g., 'technology', 'finance', 'health'). If not provided, it will be detected automatically."),
+        similarity_threshold: Optional[float] = Query(0.15, ge=0.0, le=1.0, description="Minimum semantic similarity threshold for filtering resources (0-1)")
     ):
         """
         Generate a Master Content Plan (MCP) for a given topic asynchronously.
@@ -144,7 +152,7 @@ class MCPRouter(BaseRouter):
         self.logger.info(f"Received async request for topic: {topic}")
 
         # Check cache first
-        cache_key = f"mcp:{topic}_{max_resources}_{num_nodes}_{min_width}_{max_width}_{min_height}_{max_height}_{language}_{category}"
+        cache_key = f"mcp:{topic}_{max_resources}_{num_nodes}_{min_width}_{max_width}_{min_height}_{max_height}_{language}_{category}_{similarity_threshold}"
         cached_mcp = cache.get(cache_key)
         if cached_mcp:
             self.logger.info(f"Found cached MCP for topic: {topic}")
@@ -169,7 +177,8 @@ class MCPRouter(BaseRouter):
             min_height=min_height,
             max_height=max_height,
             language=language,
-            category=category
+            category=category,
+            similarity_threshold=similarity_threshold
         )
 
         return TaskCreationResponse(task_id=task.id)
@@ -185,7 +194,8 @@ class MCPRouter(BaseRouter):
         min_height: int,
         max_height: int,
         language: str,
-        category: Optional[str] = None
+        category: Optional[str] = None,
+        similarity_threshold: float = 0.15
     ):
         """
         Process MCP generation in the background.
@@ -201,6 +211,7 @@ class MCPRouter(BaseRouter):
             max_height: Maximum height of the tree
             language: Language for resources
             category: Category for the topic
+            similarity_threshold: Minimum semantic similarity threshold for filtering resources
         """
         task = task_service.get_task(task_id)
         if not task:
@@ -213,19 +224,25 @@ class MCPRouter(BaseRouter):
             task.update_progress(10, "Starting resource search")
 
             # Find resources
+            task.update_progress(20, "Searching for resources")
             resources = await content_source.find_resources(
-                topic, max_results=max_resources, language=language, category=category
+                topic,
+                max_results=max_resources,
+                language=language,
+                category=category,
+                similarity_threshold=similarity_threshold
             )
 
             if not resources:
                 task.mark_as_failed(f"No resources found for topic: {topic}")
                 return
 
-            task.update_progress(40, f"Found {len(resources)} resources for topic: {topic}")
+            task.update_progress(40, f"Found and filtered {len(resources)} resources for topic: {topic}")
 
             # Generate learning path
-            task.update_progress(50, "Generating learning tree")
+            task.update_progress(50, "Generating learning tree structure")
             try:
+                task.update_progress(60, "Creating nodes and relationships")
                 mcp = await path_generator.generate_learning_path(
                     topic, resources,
                     min_nodes=num_nodes, max_nodes=num_nodes+10,
@@ -234,15 +251,18 @@ class MCPRouter(BaseRouter):
                     category=category, language=language
                 )
 
+                task.update_progress(80, "Learning tree generated successfully")
+
                 # Cache the result
-                cache_key = f"mcp:{topic}_{max_resources}_{num_nodes}_{min_width}_{max_width}_{min_height}_{max_height}_{language}_{category}"
+                cache_key = f"mcp:{topic}_{max_resources}_{num_nodes}_{min_width}_{max_width}_{min_height}_{max_height}_{language}_{category}_{similarity_threshold}"
                 cache.setex(cache_key, 2592000, mcp.model_dump())  # 30 days
 
-                task.update_progress(90, "Finalizing MCP generation")
+                task.update_progress(90, "Caching results for future use")
 
                 # Mark task as completed with the MCP as result
+                task.update_progress(100, "Learning tree generation complete")
                 task.mark_as_completed(mcp.model_dump())
-                self.logger.info(f"Task {task_id} completed successfully")
+                self.logger.info(f"Task {task_id} completed successfully with {len(mcp.nodes)} nodes")
 
             except ValueError as ve:
                 task.mark_as_failed(f"Could not generate enough nodes: {str(ve)}")

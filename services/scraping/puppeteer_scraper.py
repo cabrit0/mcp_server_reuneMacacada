@@ -45,7 +45,15 @@ class PuppeteerScraper(BaseScraper):
 
             page = None
             try:
-                page = await browser.newPage()
+                # Create a new page
+                try:
+                    page = await browser.newPage()
+                    if not page:
+                        self.logger.error("Failed to create new page: page is None")
+                        return None
+                except Exception as e:
+                    self.logger.error(f"Error creating new page: {str(e)}")
+                    return None
 
                 # Configure request interception to block unnecessary resources
                 try:
@@ -63,18 +71,20 @@ class PuppeteerScraper(BaseScraper):
                             # Try to continue the request in case of error
                             try:
                                 await req.continue_()
-                            except:
-                                pass
+                            except Exception as inner_e:
+                                self.logger.error(f"Failed to continue request: {str(inner_e)}")
 
                     page.on('request', lambda req: asyncio.ensure_future(request_handler(req)))
                 except Exception as e:
                     self.logger.error(f"Error configuring request interception: {str(e)}")
+                    # Continue execution even if request interception fails
 
-                # Configure timeout and navigation
+                # Configure timeout
                 try:
                     await page.setDefaultNavigationTimeout(timeout * 1000)
                 except Exception as e:
                     self.logger.error(f"Error configuring timeout: {str(e)}")
+                    # Continue execution even if timeout configuration fails
 
                 # Navigate to the page
                 try:
@@ -84,13 +94,19 @@ class PuppeteerScraper(BaseScraper):
                     # Try to load a blank page in case of error
                     try:
                         await page.goto('about:blank')
-                    except:
-                        pass
+                    except Exception as inner_e:
+                        self.logger.error(f"Error loading blank page: {str(inner_e)}")
+                        # Continue execution even if navigation fails
 
                 # Wait a bit for dynamic content to load
                 await asyncio.sleep(1)
             except Exception as e:
                 self.logger.error(f"Error initializing page: {str(e)}")
+                if page:
+                    try:
+                        await page.close()
+                    except Exception as close_error:
+                        self.logger.error(f"Error closing page after initialization error: {str(close_error)}")
                 return None
 
             # Extract content and metadata
@@ -98,17 +114,25 @@ class PuppeteerScraper(BaseScraper):
             title = ""
             description = ""
 
-            if page:  # Check if page was successfully initialized
+            if not page:
+                self.logger.error("Cannot extract content: page is None")
+            else:
                 try:
-                    html = await page.content()
+                    # Get HTML content
+                    try:
+                        html = await page.content()
+                    except Exception as e:
+                        self.logger.error(f"Error getting page content: {str(e)}")
+                        html = "<html><body>Error getting content</body></html>"
 
-                    # Use try/except for each operation that might fail
+                    # Get page title
                     try:
                         title = await page.evaluate('() => document.title || ""')
                     except Exception as e:
                         self.logger.error(f"Error getting title: {str(e)}")
                         title = ""
 
+                    # Get page description
                     try:
                         description = await page.evaluate('''
                             () => {
@@ -126,12 +150,13 @@ class PuppeteerScraper(BaseScraper):
                     html = "<html><body>Error</body></html>"
                     title = ""
                     description = ""
-
-            if page:  # Check if page was successfully initialized
-                try:
-                    await page.close()
-                except Exception as e:
-                    self.logger.error(f"Error closing page: {str(e)}")
+                finally:
+                    # Always close the page when done
+                    try:
+                        await page.close()
+                        self.logger.debug("Page closed successfully")
+                    except Exception as e:
+                        self.logger.error(f"Error closing page: {str(e)}")
 
             return {
                 'html': html,

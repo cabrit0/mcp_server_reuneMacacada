@@ -9,11 +9,12 @@ Este diretório contém a documentação detalhada das funcionalidades do MCP Se
 ### Funcionalidades
 
 1. [Funcionalidades Atualizadas](updated_features.md) - Suporte para qualquer tema, parâmetros opcionais, etc.
-2. [Remoção da Detecção de Similaridade](removed_similarity_detection.md) - Por que a detecção de similaridade foi removida
-3. [Relevância de Recursos e Distribuição de Quizzes](resource_relevance_and_quiz_distribution.md) - Distribuição estratégica de quizzes
-4. [Integração com YouTube e Sistema de Categorias](youtube_integration.md) - Inclusão de vídeos e categorização
-5. [Sistema de Tarefas Assíncronas](async_tasks_system.md) - Processamento em segundo plano
-6. [Controle de Estrutura da Árvore](tree_structure_control.md) - Parâmetros para controlar a estrutura da árvore
+2. [Filtragem Semântica de Recursos](semantic_filtering.md) - Nova funcionalidade de filtragem semântica
+3. [Simplificação do Sistema de Filtragem](simplified_filtering_system.md) - Como o sistema de filtragem foi simplificado
+4. [Relevância de Recursos e Distribuição de Quizzes](resource_relevance_and_quiz_distribution.md) - Distribuição estratégica de quizzes
+5. [Integração com YouTube e Sistema de Categorias](youtube_integration.md) - Inclusão de vídeos e categorização
+6. [Sistema de Tarefas Assíncronas](async_tasks_system.md) - Processamento em segundo plano
+7. [Controle de Estrutura da Árvore](tree_structure_control.md) - Parâmetros para controlar a estrutura da árvore
 
 ### Performance e Otimizações
 

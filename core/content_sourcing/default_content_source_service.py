@@ -14,6 +14,7 @@ from services.youtube import youtube
 from core.content_sourcing.content_source_service import ContentSourceService
 from core.content_sourcing.search_service import SearchService
 from core.content_sourcing.scraper_service import ScraperService
+from core.content_sourcing.semantic_filter_service import SemanticFilterService
 
 
 class DefaultContentSourceService(ContentSourceService):
@@ -37,6 +38,7 @@ class DefaultContentSourceService(ContentSourceService):
         self.logger = logger.get_logger("content_sourcing.default")
         self.search_service = search_service
         self.scraper_service = scraper_service
+        self.semantic_filter = SemanticFilterService()
         self.logger.info("Initialized DefaultContentSourceService")
 
     async def find_resources(
@@ -44,7 +46,8 @@ class DefaultContentSourceService(ContentSourceService):
         topic: str,
         max_results: int = 15,
         language: str = "pt",
-        category: Optional[str] = None
+        category: Optional[str] = None,
+        similarity_threshold: float = 0.15
     ) -> List[Resource]:
         """
         Find resources about a topic.
@@ -54,16 +57,19 @@ class DefaultContentSourceService(ContentSourceService):
             max_results: Maximum number of resources to return
             language: Language code (e.g., 'pt', 'en', 'es')
             category: Optional category override (if None, will be detected)
+            similarity_threshold: Minimum semantic similarity threshold (0-1)
 
         Returns:
             List of Resource objects
         """
         # Check cache first
-        cache_key = f"resources:{topic}_{max_results}_{language}_{category}"
-        cached_results = cache.get(cache_key)
+        cache_key = f"resources:{topic}_{max_results}_{language}_{category}_{similarity_threshold}"
+        cached_results = cache.get(cache_key, resource_type='resource_list')
         if cached_results:
-            self.logger.debug(f"Using cached resources for '{topic}'")
-            return [Resource(**r) for r in cached_results]
+            self.logger.info(f"Using cached resources for '{topic}'")
+            return cached_results
+
+        self.logger.info(f"Starting resource search for topic: '{topic}'")
 
         # Use provided category or detect it automatically
         if category is None:
@@ -94,11 +100,17 @@ class DefaultContentSourceService(ContentSourceService):
         all_resources = web_resources + youtube_resources
 
         # Filter resources
-        filtered_resources = self.filter_resources(all_resources, topic, max_results, language)
+        filtered_resources = self.filter_resources(
+            all_resources,
+            topic,
+            max_results,
+            language,
+            similarity_threshold
+        )
         self.logger.debug(f"Filtered resources: {len(all_resources)} -> {len(filtered_resources)}")
 
         # Cache the results
-        cache.setex(cache_key, 86400, [r.model_dump() for r in filtered_resources])  # 1 day
+        cache.setex(cache_key, 86400, filtered_resources)  # 1 day
         self.logger.info(f"Cached {len(filtered_resources)} resources for '{topic}'")
 
         return filtered_resources
@@ -124,10 +136,10 @@ class DefaultContentSourceService(ContentSourceService):
         """
         # Check cache first
         cache_key = f"resources_query:{query}_{topic}_{max_results}_{language}"
-        cached_results = cache.get(cache_key)
+        cached_results = cache.get(cache_key, resource_type='resource_list')
         if cached_results:
             self.logger.debug(f"Using cached resources for query '{query}'")
-            return [Resource(**r) for r in cached_results]
+            return cached_results
 
         # Search for resources
         search_results = await self.search_service.search(query, max_results, language)
@@ -138,7 +150,7 @@ class DefaultContentSourceService(ContentSourceService):
         self.logger.debug(f"Scraped {len(resources)} resources for query '{query}'")
 
         # Cache the results
-        cache.setex(cache_key, 86400, [r.model_dump() for r in resources])  # 1 day
+        cache.setex(cache_key, 86400, resources)  # 1 day
         self.logger.info(f"Cached {len(resources)} resources for query '{query}'")
 
         return resources
@@ -148,7 +160,8 @@ class DefaultContentSourceService(ContentSourceService):
         resources: List[Resource],
         topic: str,
         max_results: int = 15,
-        language: str = "pt"
+        language: str = "pt",
+        similarity_threshold: float = 0.15
     ) -> List[Resource]:
         """
         Filter and prioritize resources.
@@ -158,6 +171,7 @@ class DefaultContentSourceService(ContentSourceService):
             topic: The topic to filter by
             max_results: Maximum number of resources to return
             language: Language code (e.g., 'pt', 'en', 'es')
+            similarity_threshold: Minimum semantic similarity threshold (0-1)
 
         Returns:
             Filtered list of Resource objects
@@ -170,10 +184,23 @@ class DefaultContentSourceService(ContentSourceService):
                 unique_resources.append(resource)
                 seen_urls.add(resource.url)
 
-        # Sort resources by relevance (currently just by type)
-        # In a future implementation, this could use TF-IDF or embeddings for better relevance scoring
+        # Apply semantic filtering to ensure resources are relevant to the topic
+        self.logger.info(f"Applying semantic filtering with threshold {similarity_threshold} to {len(unique_resources)} resources")
+        semantically_filtered = self.semantic_filter.filter_resources_by_similarity(
+            unique_resources, topic, language, similarity_threshold
+        )
+        self.logger.info(f"Semantic filtering: {len(unique_resources)} -> {len(semantically_filtered)} resources")
+
+        # If semantic filtering removed too many resources, fall back to original list
+        if len(semantically_filtered) < 5 and len(unique_resources) > 5:
+            self.logger.warning(f"Semantic filtering removed too many resources, falling back to original list")
+            filtered_resources = unique_resources
+        else:
+            filtered_resources = semantically_filtered
+
+        # Sort resources by relevance
         sorted_resources = sorted(
-            unique_resources,
+            filtered_resources,
             key=lambda r: self._get_resource_priority(r, topic, language),
             reverse=True
         )
@@ -217,6 +244,16 @@ class DefaultContentSourceService(ContentSourceService):
         # Boost score based on language match
         if resource.url and language in resource.url:
             score *= 1.3
+
+        # Calculate relevance and boost score
+        try:
+            relevance = self.semantic_filter.calculate_resource_similarity(resource, topic)
+            # Apply a multiplier based on relevance (1.0 to 2.0)
+            relevance_boost = 1.0 + relevance
+            score *= relevance_boost
+            self.logger.debug(f"Resource '{resource.title}' has relevance {relevance:.4f}, boosting score by {relevance_boost:.2f}")
+        except Exception as e:
+            self.logger.warning(f"Error calculating resource relevance for '{resource.title}': {str(e)}")
 
         return score
 

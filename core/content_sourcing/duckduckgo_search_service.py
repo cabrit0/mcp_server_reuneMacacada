@@ -8,7 +8,7 @@ from typing import List, Dict, Any
 from infrastructure.logging import logger
 from infrastructure.cache import cache
 from core.content_sourcing.search_service import SearchService
-from services.search import search_service
+from services.search import search
 
 
 class DuckDuckGoSearchService(SearchService):
@@ -48,8 +48,8 @@ class DuckDuckGoSearchService(SearchService):
 
         # Use the search service to perform the search
         try:
-            results = await search_service.search(query, max_results, language)
-            
+            results = await search.search(query, max_results, language)
+
             # Cache the results if successful
             if results:
                 # Cache for 1 day (86400 seconds)
@@ -57,7 +57,7 @@ class DuckDuckGoSearchService(SearchService):
                 self.logger.debug(f"Cached search results for '{query}' ({len(results)} results)")
             else:
                 self.logger.warning(f"No search results found for '{query}'")
-            
+
             return results
         except Exception as e:
             self.logger.error(f"Error searching for '{query}': {str(e)}")

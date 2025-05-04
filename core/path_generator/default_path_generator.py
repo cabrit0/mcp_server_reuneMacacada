@@ -111,6 +111,16 @@ class DefaultPathGenerator(PathGeneratorService):
         )
         self.logger.debug("Distributed quizzes across nodes")
 
+        # Distribute exercises if exercise generator is available
+        if hasattr(self.node_structure_service, 'exercise_generator') and self.node_structure_service.exercise_generator:
+            nodes = self.node_structure_service.distribute_exercises(
+                nodes=nodes,
+                node_ids=node_ids,
+                topic=topic,
+                resources=resources
+            )
+            self.logger.debug("Distributed exercises across nodes")
+
         # Estimate total hours
         total_hours = self.estimate_total_hours(resources)
         self.logger.debug(f"Estimated total hours: {total_hours}")
@@ -177,8 +187,16 @@ class DefaultPathGenerator(PathGeneratorService):
                 total_minutes += 20  # Default for other types
 
         # Add time for quizzes and exercises in the learning path
-        # Assuming about 15 minutes per quiz/exercise
-        total_minutes += 15 * (len(resources) // 4)
+        # For simplicity, estimate based on the number of resources
+        # In a real implementation, we would count actual quizzes and exercises
+        quiz_count = len(resources) // 5  # Estimate 1 quiz per 5 resources
+        exercise_count = len(resources) // 7  # Estimate 1 exercise per 7 resources
+
+        # Add time for quizzes (15 minutes per quiz)
+        total_minutes += 15 * quiz_count
+
+        # Add time for exercises (30 minutes per exercise set)
+        total_minutes += 30 * exercise_count
 
         # Convert to hours and round up
         total_hours = (total_minutes + 59) // 60  # Round up

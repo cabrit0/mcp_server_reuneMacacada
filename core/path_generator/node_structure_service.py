@@ -71,3 +71,12 @@ class NodeStructureService(ABC):
             Updated dictionary of nodes
         """
         pass
+
+    def get_nodes(self) -> Dict[str, Node]:
+        """
+        Get the current nodes dictionary.
+
+        Returns:
+            Dictionary of nodes
+        """
+        return {}

@@ -1,33 +1,21 @@
 """
 Configurações do MCP Server.
+
+Este arquivo importa configurações do sistema modular em infrastructure/config/settings.py
+para manter compatibilidade com código existente.
 """
 
-import os
+from infrastructure.config import config
 
-# URL base do servidor
-# Em produção: https://reunemacacada.onrender.com
-# Em desenvolvimento: http://localhost:8000
-BASE_URL = os.environ.get('MCP_BASE_URL', 'https://reunemacacada.onrender.com')
-
-# Porta do servidor
-# Em produção: definida pelo Render via variável de ambiente PORT
-# Em desenvolvimento: 8000 (padrão)
-PORT = int(os.environ.get('PORT', 8000))
-
-# Modo de depuração
-# Em produção: False
-# Em desenvolvimento: True
-DEBUG = os.environ.get('MCP_DEBUG', 'False').lower() == 'true'
+# Importar configurações do sistema modular
+BASE_URL = config.get('BASE_URL')
+PORT = config.get('PORT')
+DEBUG = config.get('DEBUG')
 
 # Configurações de cache
-CACHE_TTL = {
-    'search_results': 86400,    # 1 dia
-    'page_content': 604800,     # 1 semana
-    'mcp_results': 2592000,     # 30 dias
-    'default': 86400            # 1 dia (padrão)
-}
+CACHE_TTL = config.get('CACHE', {}).get('ttl', {})
 
 # Configurações de scraping
-MAX_CONCURRENT_REQUESTS = 10
-MAX_REQUESTS_PER_DOMAIN = 3
-MAX_PUPPETEER_INSTANCES = 3
+MAX_CONCURRENT_REQUESTS = config.get('SCRAPING', {}).get('max_concurrent_tasks', 10)
+MAX_REQUESTS_PER_DOMAIN = 3  # Manter valor original se não existir no sistema modular
+MAX_PUPPETEER_INSTANCES = config.get('SCRAPING', {}).get('puppeteer', {}).get('max_instances', 3)

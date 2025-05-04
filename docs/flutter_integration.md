@@ -182,6 +182,7 @@ class Node {
   final List<String> prerequisites;
   final VisualPosition visualPosition;
   final Quiz? quiz;
+  final ExerciseSet? exerciseSet;
 
   Node({
     required this.id,
@@ -192,6 +193,7 @@ class Node {
     required this.prerequisites,
     required this.visualPosition,
     this.quiz,
+    this.exerciseSet,
   });
 
   factory Node.fromJson(Map<String, dynamic> json) {
@@ -206,6 +208,7 @@ class Node {
       prerequisites: List<String>.from(json['prerequisites']),
       visualPosition: VisualPosition.fromJson(json['visualPosition']),
       quiz: json['quiz'] != null ? Quiz.fromJson(json['quiz']) : null,
+      exerciseSet: json['exerciseSet'] != null ? ExerciseSet.fromJson(json['exerciseSet']) : null,
     );
   }
 
@@ -219,6 +222,7 @@ class Node {
       'prerequisites': prerequisites,
       'visualPosition': visualPosition.toJson(),
       'quiz': quiz?.toJson(),
+      'exerciseSet': exerciseSet?.toJson(),
     };
   }
 }
@@ -478,6 +482,93 @@ class TaskMessage {
 }
 ```
 
+### Modelo ExerciseSet
+
+```dart
+// lib/models/exercise_set.dart
+class ExerciseSet {
+  final List<Exercise> exercises;
+  final int passingScore;
+
+  ExerciseSet({
+    required this.exercises,
+    required this.passingScore,
+  });
+
+  factory ExerciseSet.fromJson(Map<String, dynamic> json) {
+    return ExerciseSet(
+      exercises: (json['exercises'] as List)
+          .map((exercise) => Exercise.fromJson(exercise))
+          .toList(),
+      passingScore: json['passingScore'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'exercises': exercises.map((exercise) => exercise.toJson()).toList(),
+      'passingScore': passingScore,
+    };
+  }
+}
+
+class Exercise {
+  final String id;
+  final String title;
+  final String description;
+  final String difficulty;
+  final String instructions;
+  final List<String> hints;
+  final String solution;
+  final String verificationMethod;
+  final List<String>? options;
+  final String correctAnswer;
+
+  Exercise({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.difficulty,
+    required this.instructions,
+    required this.hints,
+    required this.solution,
+    required this.verificationMethod,
+    this.options,
+    required this.correctAnswer,
+  });
+
+  factory Exercise.fromJson(Map<String, dynamic> json) {
+    return Exercise(
+      id: json['id'],
+      title: json['title'],
+      description: json['description'],
+      difficulty: json['difficulty'],
+      instructions: json['instructions'],
+      hints: List<String>.from(json['hints']),
+      solution: json['solution'],
+      verificationMethod: json['verificationMethod'],
+      options: json['options'] != null ? List<String>.from(json['options']) : null,
+      correctAnswer: json['correctAnswer'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'description': description,
+      'difficulty': difficulty,
+      'instructions': instructions,
+      'hints': hints,
+      'solution': solution,
+      'verificationMethod': verificationMethod,
+      'options': options,
+      'correctAnswer': correctAnswer,
+    };
+  }
+}
+```
+
 ### Modelo TaskCreationResponse
 
 ```dart
@@ -618,6 +709,7 @@ class McpService extends ApiServiceBase {
     int maxHeight = 7,
     String language = 'pt',
     String? category,
+    double similarityThreshold = 0.15,
   }) async {
     final queryParams = {
       'topic': topic,
@@ -628,6 +720,7 @@ class McpService extends ApiServiceBase {
       'min_height': minHeight.toString(),
       'max_height': maxHeight.toString(),
       'language': language,
+      'similarity_threshold': similarityThreshold.toString(),
     };
 
     if (category != null) {
@@ -653,6 +746,7 @@ class McpService extends ApiServiceBase {
     int maxHeight = 7,
     String language = 'pt',
     String? category,
+    double similarityThreshold = 0.15,
   }) async {
     final queryParams = {
       'topic': topic,
@@ -663,6 +757,7 @@ class McpService extends ApiServiceBase {
       'min_height': minHeight.toString(),
       'max_height': maxHeight.toString(),
       'language': language,
+      'similarity_threshold': similarityThreshold.toString(),
     };
 
     if (category != null) {
@@ -875,6 +970,7 @@ class McpProvider with ChangeNotifier {
     int maxHeight = 7,
     String language = 'pt',
     String? category,
+    double similarityThreshold = 0.15,
     bool useCache = true,
   }) async {
     try {
@@ -904,6 +1000,7 @@ class McpProvider with ChangeNotifier {
         maxHeight: maxHeight,
         language: language,
         category: category,
+        similarityThreshold: similarityThreshold,
       );
 
       _currentMcp = mcp;
@@ -931,6 +1028,7 @@ class McpProvider with ChangeNotifier {
     int maxHeight = 7,
     String language = 'pt',
     String? category,
+    double similarityThreshold = 0.15,
     bool useCache = true,
   }) async {
     try {
@@ -961,6 +1059,7 @@ class McpProvider with ChangeNotifier {
         maxHeight: maxHeight,
         language: language,
         category: category,
+        similarityThreshold: similarityThreshold,
       );
 
       // Iniciar polling para acompanhar o progresso
@@ -1049,4 +1148,37 @@ class McpProvider with ChangeNotifier {
 }
 ```
 
-Estes serviços fornecem uma camada de abstração para interagir com a API do MCP Server, gerenciar o cache local e acompanhar o progresso de tarefas assíncronas. Na próxima seção, implementaremos widgets para exibir os planos de aprendizagem.
+Estes serviços fornecem uma camada de abstração para interagir com a API do MCP Server, gerenciar o cache local e acompanhar o progresso de tarefas assíncronas.
+
+### Exemplo de Uso com Filtragem de Relevância
+
+Aqui está um exemplo de como usar o parâmetro `similarityThreshold` para controlar a relevância dos recursos:
+
+```dart
+// Exemplo 1: Filtragem de relevância padrão (0.15)
+await mcpProvider.generateMcpAsync(
+  topic: 'Inteligência Artificial',
+  language: 'pt',
+  category: 'technology',
+);
+
+// Exemplo 2: Filtragem de relevância mais rigorosa (0.3)
+// Retorna menos recursos, mas mais relevantes
+await mcpProvider.generateMcpAsync(
+  topic: 'Inteligência Artificial',
+  language: 'pt',
+  category: 'technology',
+  similarityThreshold: 0.3,
+);
+
+// Exemplo 3: Filtragem de relevância mais permissiva (0.1)
+// Retorna mais recursos, mas potencialmente menos relevantes
+await mcpProvider.generateMcpAsync(
+  topic: 'Inteligência Artificial',
+  language: 'pt',
+  category: 'technology',
+  similarityThreshold: 0.1,
+);
+```
+
+Na próxima seção, implementaremos widgets para exibir os planos de aprendizagem.

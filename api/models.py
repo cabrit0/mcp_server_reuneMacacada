@@ -2,7 +2,7 @@
 Modelos de dados para a API do MCP Server.
 
 Este módulo contém os modelos Pydantic que definem a estrutura de dados da API,
-incluindo os modelos para MCPs, nós, recursos, metadados, quizzes, etc.
+incluindo os modelos para MCPs, nós, recursos, metadados, quizzes, exercícios, etc.
 """
 
 from typing import Dict, List, Optional, Union, Any
@@ -44,6 +44,77 @@ class Quiz(BaseModel):
         passingScore: Pontuação mínima para passar no quiz (0-100)
     """
     questions: List[Question] = []
+    passingScore: int = 70
+
+    @validator('passingScore')
+    def validate_passing_score(cls, v):
+        """Valida se a pontuação mínima está entre 0 e 100."""
+        if v < 0 or v > 100:
+            raise ValueError('passingScore deve estar entre 0 e 100')
+        return v
+
+
+class Exercise(BaseModel):
+    """
+    Modelo para um exercício prático.
+
+    Attributes:
+        id: Identificador único do exercício
+        title: Título do exercício
+        description: Descrição do exercício
+        difficulty: Nível de dificuldade do exercício
+        instructions: Instruções passo a passo para o exercício
+        hints: Lista de dicas para o exercício (para revelação progressiva)
+        solution: Solução do exercício
+        verificationMethod: Método de verificação da resposta (multiple_choice, text_match, etc.)
+        options: Lista de opções para exercícios de múltipla escolha
+        correctAnswer: Resposta correta para o exercício
+    """
+    id: str
+    title: str
+    description: str
+    difficulty: str = "intermediate"
+    instructions: str
+    hints: List[str] = []
+    solution: str
+    verificationMethod: str  # "multiple_choice", "text_match", etc.
+    options: Optional[List[str]] = None
+    correctAnswer: str
+
+    @validator('difficulty')
+    def validate_difficulty(cls, v):
+        """Valida se o nível de dificuldade é válido."""
+        valid_difficulties = ["beginner", "intermediate", "advanced"]
+        if v.lower() not in valid_difficulties:
+            raise ValueError(f'difficulty deve ser um dos seguintes: {", ".join(valid_difficulties)}')
+        return v.lower()
+
+    @validator('verificationMethod')
+    def validate_verification_method(cls, v):
+        """Valida se o método de verificação é válido."""
+        valid_methods = ["multiple_choice", "text_match", "code_execution", "manual"]
+        if v.lower() not in valid_methods:
+            raise ValueError(f'verificationMethod deve ser um dos seguintes: {", ".join(valid_methods)}')
+        return v.lower()
+
+    @validator('options')
+    def validate_options(cls, v, values):
+        """Valida se as opções estão presentes para exercícios de múltipla escolha."""
+        if 'verificationMethod' in values and values['verificationMethod'] == "multiple_choice":
+            if v is None or len(v) < 2:
+                raise ValueError('options deve conter pelo menos 2 opções para exercícios de múltipla escolha')
+        return v
+
+
+class ExerciseSet(BaseModel):
+    """
+    Modelo para um conjunto de exercícios práticos.
+
+    Attributes:
+        exercises: Lista de exercícios no conjunto
+        passingScore: Pontuação mínima para passar no conjunto de exercícios (0-100)
+    """
+    exercises: List[Exercise] = []
     passingScore: int = 70
 
     @validator('passingScore')
@@ -108,10 +179,34 @@ class Resource(BaseModel):
     difficulty: Optional[str] = None
     thumbnail: Optional[str] = None  # URL da imagem de thumbnail
 
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Converte o recurso para um dicionário para serialização.
+        Este método é usado pelo sistema de cache.
+
+        Returns:
+            Representação em dicionário do recurso
+        """
+        return self.model_dump()
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'Resource':
+        """
+        Cria um objeto Resource a partir de um dicionário.
+        Este método é usado pelo sistema de cache.
+
+        Args:
+            data: Representação em dicionário do recurso
+
+        Returns:
+            Objeto Resource
+        """
+        return cls(**data)
+
     @validator('type')
     def validate_type(cls, v):
         """Valida se o tipo do recurso é válido."""
-        valid_types = ["article", "video", "documentation", "exercise", "tutorial", "course", "book", "tool", "other"]
+        valid_types = ["article", "video", "documentation", "exercise", "tutorial", "course", "book", "tool", "quiz", "other"]
         if v.lower() not in valid_types:
             raise ValueError(f'type deve ser um dos seguintes: {", ".join(valid_types)}')
         return v.lower()
@@ -150,6 +245,7 @@ class Node(BaseModel):
         hints: Lista de dicas para o nó
         visualPosition: Posição visual do nó na interface
         quiz: Quiz associado ao nó (opcional)
+        exerciseSet: Conjunto de exercícios associado ao nó (opcional)
     """
     id: str
     title: str
@@ -162,6 +258,7 @@ class Node(BaseModel):
     hints: List[str] = []
     visualPosition: Dict[str, Union[int, float]] = Field(default_factory=lambda: {"x": 0, "y": 0, "level": 0})
     quiz: Optional[Quiz] = None
+    exerciseSet: Optional[ExerciseSet] = None
 
     @validator('type')
     def validate_type(cls, v):
@@ -291,6 +388,9 @@ class TaskInfo(BaseModel):
         if v < 0 or v > 100:
             raise ValueError('progress deve estar entre 0 e 100')
         return v
+
+
+
 
 
 class TaskCreationResponse(BaseModel):

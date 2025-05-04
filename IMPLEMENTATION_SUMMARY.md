@@ -2,17 +2,18 @@
 
 Este documento resume as implementações realizadas no MCP Server para melhorar a qualidade dos planos de aprendizagem gerados.
 
-## 1. Remoção da Detecção de Similaridade
+## 1. Simplificação do Sistema de Filtragem
 
 ### Arquivos Modificados:
 
-- `content_sourcing.py`: Remoção da integração com o detector de similaridade
-- `main.py`: Remoção dos parâmetros de similaridade dos endpoints
+- `core/content_sourcing/semantic_filter_service.py`: Simplificado para usar correspondência de palavras-chave
+- `core/content_sourcing/default_content_source_service.py`: Atualizado para usar o novo sistema de filtragem
+- `api/routers/mcp_router.py`: Atualização das mensagens de log
 
 ### Problema Resolvido:
 
 - O servidor não conseguia encontrar mais que 3 nós devido à filtragem excessiva de recursos
-- A detecção de similaridade estava removendo recursos úteis
+- O sistema de detecção de similaridade estava removendo recursos úteis
 - A validação de tamanho mínimo da árvore estava falhando
 
 ### Benefícios:
@@ -79,7 +80,7 @@ GET /generate_mcp_v2?topic={topic}&difficulty={difficulty}&formats={formats}&max
 
 ### Arquivos de Documentação:
 
-- `docs/removed_similarity_detection.md`: Detalhes sobre a remoção da detecção de similaridade
+- `docs/simplified_filtering_system.md`: Detalhes sobre a simplificação do sistema de filtragem
 - `docs/language_tree_adjustment.md`: Detalhes sobre o ajuste da árvore por idioma
 - `docs/minimum_tree_size.md`: Detalhes sobre a validação de tamanho mínimo da árvore
 - `docs/README.md`: Visão geral das novas funcionalidades e endpoints
@@ -88,7 +89,7 @@ GET /generate_mcp_v2?topic={topic}&difficulty={difficulty}&formats={formats}&max
 
 ### Arquivos de Teste:
 
-- `test_similarity.py`: Script para testar a detecção de similaridade (mantido para referência futura)
+- Testes unitários e de integração para verificar o funcionamento correto do sistema de filtragem
 
 ## Próximos Passos
 
@@ -96,4 +97,4 @@ GET /generate_mcp_v2?topic={topic}&difficulty={difficulty}&formats={formats}&max
 2. **Otimizar a busca de recursos**: Melhorar a qualidade e relevância dos recursos encontrados
 3. **Personalização por usuário**: Permitir que usuários ajustem suas preferências de estrutura
 4. **Análise de feedback**: Coletar feedback sobre a qualidade dos planos gerados e iterar
-5. **Implementar uma versão mais leve de detecção de similaridade**: Desenvolver uma abordagem que não limite o número de nós
+5. **Aprimorar o sistema de filtragem**: Continuar refinando o sistema de filtragem para melhorar a relevância dos recursos sem limitar o número de nós

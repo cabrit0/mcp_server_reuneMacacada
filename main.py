@@ -1,3 +1,15 @@
+import os
+import sys
+
+# Run setup_environment.py to configure Chrome
+try:
+    from setup_environment import setup_environment
+    setup_environment()
+except ImportError:
+    print("Warning: setup_environment.py not found. Chrome configuration may not be complete.")
+except Exception as e:
+    print(f"Warning: Error in setup_environment.py: {str(e)}")
+
 from api import MCPServerApp
 import config
 
