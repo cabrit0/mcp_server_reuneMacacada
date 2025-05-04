@@ -5,6 +5,9 @@ services:
     buildCommand: |
       # Instalar dependências Python
       pip install -r requirements.txt
+      # Instalar NLTK e baixar recursos necessários
+      python -m pip install nltk
+      python -c "import nltk; nltk.download('stopwords', quiet=True); nltk.download('punkt', quiet=True)"
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION

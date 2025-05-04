@@ -91,6 +91,33 @@ GET /generate_mcp_v2?topic={topic}&difficulty={difficulty}&formats={formats}&max
 
 - Testes unitários e de integração para verificar o funcionamento correto do sistema de filtragem
 
+## 4. Aprimoramento da Extração de Descrições com NLP
+
+### Arquivos Criados:
+
+- `services/nlp/nlp_description_service.py`: Novo serviço para geração e validação de descrições usando NLP
+- `services/nlp/__init__.py`: Inicialização do módulo NLP
+- `tests/services/nlp/test_nlp_description_service.py`: Testes para o serviço NLP
+
+### Arquivos Modificados:
+
+- `services/scraping/base_scraper.py`: Atualizado para usar o serviço NLP para melhorar descrições
+- `requirements.txt`: Adicionada dependência do NLTK
+
+### Funcionalidades:
+
+- Geração de descrições significativas quando não disponíveis nos metadados
+- Validação de descrições para garantir relevância ao tópico
+- Extração de sentenças-chave do conteúdo para criar descrições mais informativas
+- Suporte a múltiplos idiomas (foco em português)
+
+### Benefícios:
+
+- Descrições mais relevantes e informativas para os recursos
+- Melhor compreensão do conteúdo dos recursos pelos usuários
+- Maior qualidade dos metadados na árvore de aprendizagem
+- Redução de descrições genéricas ou irrelevantes
+
 ## Próximos Passos
 
 1. **Melhorar o suporte a idiomas**: Adicionar mais idiomas e refinar os ajustes específicos
@@ -98,3 +125,4 @@ GET /generate_mcp_v2?topic={topic}&difficulty={difficulty}&formats={formats}&max
 3. **Personalização por usuário**: Permitir que usuários ajustem suas preferências de estrutura
 4. **Análise de feedback**: Coletar feedback sobre a qualidade dos planos gerados e iterar
 5. **Aprimorar o sistema de filtragem**: Continuar refinando o sistema de filtragem para melhorar a relevância dos recursos sem limitar o número de nós
+6. **Expandir capacidades de NLP**: Implementar técnicas mais avançadas para análise de conteúdo e extração de metadados

@@ -3,12 +3,16 @@ Base implementation for scrapers.
 """
 
 from abc import abstractmethod
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, TYPE_CHECKING
 from urllib.parse import urlparse
 
 from infrastructure.logging import logger
 from infrastructure.cache import cache
 from services.scraping.scraper_service import ScraperService
+from services.nlp.nlp_description_service import get_nlp_description_service
+
+if TYPE_CHECKING:
+    from bs4 import BeautifulSoup
 
 
 class BaseScraper(ScraperService):
@@ -84,7 +88,7 @@ class BaseScraper(ScraperService):
             self.logger.error(f"Error scraping {url}: {str(e)}")
             return None
 
-    def extract_metadata_from_html(self, html_content: str, url: str, topic: str) -> Dict[str, Any]:
+    def extract_metadata_from_html(self, html_content: str, url: str, topic: str, language: str = "pt") -> Dict[str, Any]:
         """
         Extract metadata from HTML content.
 
@@ -92,11 +96,15 @@ class BaseScraper(ScraperService):
             html_content: HTML content
             url: URL of the content
             topic: Topic being searched for
+            language: Language code (e.g., 'pt', 'en', 'es')
 
         Returns:
             Dictionary with title, description, content type, etc.
         """
         from bs4 import BeautifulSoup
+
+        # Get NLP description service
+        nlp_service = get_nlp_description_service()
 
         try:
             soup = BeautifulSoup(html_content, 'html.parser')
@@ -110,8 +118,14 @@ class BaseScraper(ScraperService):
             meta_desc = soup.find('meta', attrs={'name': 'description'})
             description = meta_desc['content'] if meta_desc and 'content' in meta_desc.attrs else ''
 
+            # Try to get description from OpenGraph tags if not found
             if not description or len(description) < 10:
-                # Try to extract the first paragraph
+                og_desc = soup.find('meta', attrs={'property': 'og:description'})
+                if og_desc and 'content' in og_desc.attrs:
+                    description = og_desc['content']
+
+            # Try to extract the first paragraph if still no description
+            if not description or len(description) < 10:
                 paragraphs = soup.find_all('p')
                 for p in paragraphs:
                     text = p.text.strip()
@@ -119,8 +133,13 @@ class BaseScraper(ScraperService):
                         description = text[:300] + '...' if len(text) > 300 else text
                         break
 
+            # Use NLP service to generate or improve description if needed
             if not description or len(description) < 10:
-                description = f"A resource about {topic}"
+                self.logger.debug(f"Generating description for {url} using NLP service")
+                description = nlp_service.generate_description(html_content, url, topic, language)
+            elif not nlp_service.validate_description(description, topic, language):
+                self.logger.debug(f"Improving description for {url} using NLP service")
+                description = nlp_service.improve_description(description, html_content, topic, language)
 
             # Determine content type
             content_type = self._determine_content_type(soup, url)
@@ -188,7 +207,7 @@ class BaseScraper(ScraperService):
         # Default to article
         return 'article'
 
-    async def get_page_content(self, url: str, topic: str, timeout: int = 30) -> Dict[str, Any]:
+    async def get_page_content(self, url: str, topic: str, timeout: int = 30, language: str = "pt") -> Dict[str, Any]:
         """
         Get content from a page with metadata.
         This is a high-level method that combines scrape_url and extract_metadata_from_html.
@@ -197,6 +216,7 @@ class BaseScraper(ScraperService):
             url: URL to scrape
             topic: Topic being searched for
             timeout: Timeout in seconds
+            language: Language code (e.g., 'pt', 'en', 'es')
 
         Returns:
             Dictionary with title, description, content type, etc.
@@ -210,7 +230,7 @@ class BaseScraper(ScraperService):
         }
 
         # Check cache first
-        cache_key = f"resource:{url}"
+        cache_key = f"resource:{url}_{language}"
         cached_result = cache.get(cache_key)
         if cached_result:
             self.logger.debug(f"Using cached resource for {url}")
@@ -226,7 +246,7 @@ class BaseScraper(ScraperService):
                 return default_result
 
             # Extract metadata
-            result = self.extract_metadata_from_html(html_content, url, topic)
+            result = self.extract_metadata_from_html(html_content, url, topic, language)
 
             # Cache the result
             cache.setex(cache_key, self.cache_ttl, result)

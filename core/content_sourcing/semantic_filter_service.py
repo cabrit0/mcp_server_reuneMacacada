@@ -2,19 +2,28 @@
 Semantic filter service for filtering resources based on relevance to a topic.
 """
 
-from typing import List
-import nltk
-from nltk.corpus import stopwords
+from typing import List, Dict, Set
 
 from api.models import Resource
 from infrastructure.logging import logger
 from infrastructure.cache import cache
 
-# Download NLTK resources if not already downloaded
+# Try to import NLTK, but don't fail if it's not available
+NLTK_AVAILABLE = False
 try:
-    nltk.data.find('corpora/stopwords')
-except LookupError:
-    nltk.download('stopwords', quiet=True)
+    import nltk
+    from nltk.corpus import stopwords
+
+    # Download NLTK resources if not already downloaded
+    try:
+        nltk.data.find('corpora/stopwords')
+    except LookupError:
+        nltk.download('stopwords', quiet=True)
+
+    NLTK_AVAILABLE = True
+    logger.get_logger("semantic_filter").info("NLTK is available and initialized")
+except ImportError:
+    logger.get_logger("semantic_filter").warning("NLTK is not available, using fallback stopwords")
 
 
 class SemanticFilterService:
@@ -24,18 +33,36 @@ class SemanticFilterService:
     """
 
     # Stopwords for different languages
-    STOPWORDS = {
-        'pt': set(stopwords.words('portuguese')),
-        'en': set(stopwords.words('english')),
-        'es': set(stopwords.words('spanish')),
-        'fr': set(stopwords.words('french')),
-        'de': set(stopwords.words('german')),
-        'it': set(stopwords.words('italian')),
-        # Add more languages as needed
-    }
+    STOPWORDS = {}
+    DEFAULT_STOPWORDS = set()
 
-    # Default stopwords (English) for languages not in the list
-    DEFAULT_STOPWORDS = set(stopwords.words('english'))
+    if NLTK_AVAILABLE:
+        STOPWORDS = {
+            'pt': set(stopwords.words('portuguese')),
+            'en': set(stopwords.words('english')),
+            'es': set(stopwords.words('spanish')),
+            'fr': set(stopwords.words('french')),
+            'de': set(stopwords.words('german')),
+            'it': set(stopwords.words('italian')),
+            # Add more languages as needed
+        }
+        # Default stopwords (English) for languages not in the list
+        DEFAULT_STOPWORDS = set(stopwords.words('english'))
+    else:
+        # Fallback stopwords for common languages
+        STOPWORDS = {
+            'en': set(['a', 'an', 'the', 'and', 'or', 'but', 'if', 'then', 'else', 'when',
+                      'at', 'from', 'by', 'for', 'with', 'about', 'against', 'between',
+                      'into', 'through', 'during', 'before', 'after', 'above', 'below',
+                      'to', 'of', 'in', 'on', 'is', 'are', 'was', 'were', 'be', 'been', 'being']),
+            'pt': set(['a', 'o', 'e', 'é', 'de', 'da', 'do', 'em', 'no', 'na', 'um', 'uma',
+                      'que', 'para', 'com', 'por', 'como', 'mas', 'ou', 'se', 'porque',
+                      'quando', 'onde', 'quem', 'qual', 'quais', 'seu', 'sua', 'seus', 'suas']),
+            'es': set(['el', 'la', 'los', 'las', 'un', 'una', 'unos', 'unas', 'y', 'o',
+                      'pero', 'si', 'de', 'del', 'a', 'en', 'por', 'para', 'con', 'sin',
+                      'sobre', 'entre', 'como', 'cuando', 'donde', 'quien', 'que', 'cual'])
+        }
+        DEFAULT_STOPWORDS = STOPWORDS['en']
 
     def __init__(self):
         """Initialize the semantic filter service."""
