@@ -2,6 +2,8 @@
 
 Este documento descreve as melhorias de performance implementadas e planejadas para o MCP Server.
 
+> **Nota:** Este documento complementa [Otimizações de Performance](performance_optimization.md), que contém detalhes sobre as otimizações já implementadas.
+
 ## Melhorias Implementadas
 
 ### 1. Sistema de Cache Simplificado
@@ -19,103 +21,97 @@ O sistema de cache está implementado no arquivo `simple_cache.py` e é usado em
 
 Reduzimos as dependências externas e otimizamos os imports para melhorar o tempo de inicialização e reduzir o uso de memória.
 
-## Melhorias Planejadas
+### 3. Pool de Instâncias Puppeteer
 
-### 1. Pool de Instâncias Puppeteer
+Implementamos um pool de instâncias Puppeteer para reutilização, reduzindo o overhead de criar e destruir instâncias de navegador.
 
-**Descrição**: Implementar um pool de instâncias Puppeteer para reutilização, reduzindo o overhead de criar e destruir instâncias de navegador.
-
-**Benefícios**:
 - Redução significativa no uso de memória
 - Melhoria no tempo de resposta para scraping
 - Menor carga no servidor
 
-**Implementação**:
-- Criar uma classe `PuppeteerPool` que gerencia um conjunto de instâncias de navegador
-- Implementar métodos para obter uma instância disponível e devolvê-la ao pool após o uso
-- Definir um número máximo de instâncias baseado nos recursos disponíveis
-- Implementar reinicialização periódica das instâncias para evitar vazamento de memória
+### 4. Scraping Adaptativo
 
-### 2. Scraping Adaptativo
+Implementamos um sistema que escolhe o método de scraping mais eficiente para cada site.
 
-**Descrição**: Implementar um sistema que escolhe o método de scraping mais eficiente para cada site.
-
-**Benefícios**:
 - Uso mais eficiente dos recursos
 - Melhor tempo de resposta
 - Maior confiabilidade
 
-**Implementação**:
-- Usar requests + BeautifulSoup para sites simples sem JavaScript pesado
-- Reservar Puppeteer apenas para sites que realmente necessitam de renderização JavaScript
-- Manter uma lista de domínios e qual técnica funciona melhor para cada um
-- Implementar fallback automático entre métodos
+## Melhorias Planejadas
 
-### 3. Paralelização com Controle de Concorrência
+### 1. Paralelização com Controle de Concorrência Avançado
 
-**Descrição**: Implementar scraping paralelo com controle de concorrência para otimizar o uso de recursos.
+**Descrição**: Melhorar o sistema de paralelização com controle de concorrência mais sofisticado.
 
 **Benefícios**:
+
 - Maior throughput
 - Melhor utilização de recursos
 - Respeito aos limites de rate dos sites
 
 **Implementação**:
-- Usar asyncio para paralelizar requisições
+
+- Aprimorar o uso de asyncio para paralelizar requisições
 - Implementar semáforos para limitar o número de requisições concorrentes
 - Implementar limites por domínio para evitar sobrecarga de sites específicos
 - Usar filas de prioridade para recursos mais relevantes
 
-### 4. Cache Distribuído com Redis
+### 2. Cache Distribuído com Redis
 
 **Descrição**: Migrar o sistema de cache para uma solução distribuída usando Redis.
 
 **Benefícios**:
+
 - Persistência de cache entre reinicializações do servidor
 - Melhor escalabilidade
 - Compartilhamento de cache entre múltiplas instâncias
 
 **Implementação**:
+
 - Configurar Redis (Redis Cloud para produção)
 - Migrar o sistema de cache atual para usar Redis
 - Implementar serialização/deserialização eficiente
 - Manter cache em memória como fallback
 
-### 5. Otimização de Algoritmos
+### 3. Otimização de Algoritmos
 
 **Descrição**: Otimizar os algoritmos de geração de árvores e filtragem de recursos.
 
 **Benefícios**:
+
 - Redução do tempo de processamento
 - Menor consumo de memória
 - Melhor qualidade dos resultados
 
 **Implementação**:
-- Refatorar o algoritmo TF-IDF para usar implementações mais eficientes
+
 - Otimizar a geração de estrutura da árvore para evitar recálculos
 - Implementar técnicas de poda para eliminar caminhos irrelevantes precocemente
 
 ## Plano de Implementação
 
-### Fase 1: Otimização do Web Scraping (2-3 semanas)
-1. Implementar o pool de instâncias Puppeteer
-2. Implementar o scraping adaptativo
-3. Implementar a paralelização com controle de concorrência
+### Fase 1: Otimização Adicional do Web Scraping (1-2 semanas)
+
+1. Aprimorar o pool de instâncias Puppeteer
+2. Melhorar o scraping adaptativo
+3. Implementar a paralelização com controle de concorrência avançado
 4. Testar e medir o impacto
 
 ### Fase 2: Cache Distribuído (1-2 semanas)
+
 1. Configurar Redis
 2. Migrar o sistema de cache para Redis
 3. Implementar políticas de expiração avançadas
 4. Testar e medir o impacto
 
-### Fase 3: Otimização de Algoritmos (2-3 semanas)
-1. Refatorar o algoritmo TF-IDF
-2. Otimizar a geração de estrutura da árvore
-3. Implementar técnicas de poda
-4. Testar e medir o impacto
+### Fase 3: Otimização de Algoritmos (1-2 semanas)
 
-### Fase 4: Monitoramento e Ajustes (1-2 semanas)
+1. Otimizar a geração de estrutura da árvore
+2. Implementar técnicas de poda
+3. Testar e medir o impacto
+
+### Fase 4: Monitoramento e Ajustes (1 semana)
+
 1. Implementar logging detalhado
 2. Configurar alertas para problemas de performance
 3. Ajustar parâmetros baseados em dados de uso real
@@ -123,7 +119,7 @@ Reduzimos as dependências externas e otimizamos os imports para melhorar o temp
 
 ## Métricas de Performance
 
-Para medir o impacto das melhorias, vamos monitorar as seguintes métricas:
+Para medir o impacto das melhorias, monitoramos as seguintes métricas:
 
 1. **Tempo de Resposta**: Tempo médio para gerar um MCP
 2. **Uso de Memória**: Consumo de memória do servidor

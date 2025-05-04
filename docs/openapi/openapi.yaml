@@ -1,0 +1,765 @@
+openapi: 3.0.3
+info:
+  title: MCP Server API
+  description: |
+    API for generating Master Content Plans based on topics.
+    
+    The MCP Server provides endpoints for generating learning paths, managing asynchronous tasks, and controlling the cache.
+  version: 1.1.3
+  contact:
+    name: MCP Server Support
+servers:
+  - url: https://reunemacacada.onrender.com
+    description: Production server
+  - url: http://localhost:8000
+    description: Development server
+
+tags:
+  - name: Health
+    description: Health check endpoints
+  - name: MCP
+    description: MCP generation endpoints
+  - name: Tasks
+    description: Task management endpoints
+  - name: Cache
+    description: Cache management endpoints
+
+paths:
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check
+      description: Health check endpoint to verify the server is running.
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+  
+  /generate_mcp:
+    get:
+      tags:
+        - MCP
+      summary: Generate MCP synchronously
+      description: |
+        Generate a Master Content Plan (MCP) for a given topic synchronously.
+        
+        This endpoint:
+        1. Searches for relevant resources on the web
+        2. Organizes them into a structured learning path
+        3. Returns a complete MCP in JSON format
+      operationId: generateMCP
+      parameters:
+        - name: topic
+          in: query
+          description: The topic to generate an MCP for
+          required: true
+          schema:
+            type: string
+            minLength: 3
+          example: Python
+        - name: max_resources
+          in: query
+          description: Maximum number of resources to include
+          required: false
+          schema:
+            type: integer
+            minimum: 5
+            maximum: 30
+            default: 15
+          example: 15
+        - name: num_nodes
+          in: query
+          description: Number of nodes to include in the learning path
+          required: false
+          schema:
+            type: integer
+            minimum: 10
+            maximum: 30
+            default: 15
+          example: 15
+        - name: min_width
+          in: query
+          description: Minimum width of the tree (nodes at first level)
+          required: false
+          schema:
+            type: integer
+            minimum: 2
+            maximum: 10
+            default: 3
+          example: 3
+        - name: max_width
+          in: query
+          description: Maximum width at any level of the tree
+          required: false
+          schema:
+            type: integer
+            minimum: 3
+            maximum: 15
+            default: 5
+          example: 5
+        - name: min_height
+          in: query
+          description: Minimum height of the tree (depth)
+          required: false
+          schema:
+            type: integer
+            minimum: 2
+            maximum: 8
+            default: 3
+          example: 3
+        - name: max_height
+          in: query
+          description: Maximum height of the tree (depth)
+          required: false
+          schema:
+            type: integer
+            minimum: 3
+            maximum: 12
+            default: 7
+          example: 7
+        - name: language
+          in: query
+          description: Language for resources (e.g., 'pt', 'en', 'es')
+          required: false
+          schema:
+            type: string
+            default: pt
+          example: pt
+        - name: category
+          in: query
+          description: Category for the topic (e.g., 'technology', 'finance', 'health'). If not provided, it will be detected automatically.
+          required: false
+          schema:
+            type: string
+          example: technology
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MCP'
+        '400':
+          description: Invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: No resources found for the topic
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /generate_mcp_async:
+    post:
+      tags:
+        - MCP
+      summary: Generate MCP asynchronously
+      description: |
+        Generate a Master Content Plan (MCP) for a given topic asynchronously.
+        
+        This endpoint:
+        1. Creates a background task to generate the MCP
+        2. Returns immediately with a task ID
+        3. The client can check the task status using the /status/{task_id} endpoint
+      operationId: generateMCPAsync
+      parameters:
+        - name: topic
+          in: query
+          description: The topic to generate an MCP for
+          required: true
+          schema:
+            type: string
+            minLength: 3
+          example: Python
+        - name: max_resources
+          in: query
+          description: Maximum number of resources to include
+          required: false
+          schema:
+            type: integer
+            minimum: 5
+            maximum: 30
+            default: 15
+          example: 15
+        - name: num_nodes
+          in: query
+          description: Number of nodes to include in the learning path
+          required: false
+          schema:
+            type: integer
+            minimum: 10
+            maximum: 30
+            default: 15
+          example: 15
+        - name: min_width
+          in: query
+          description: Minimum width of the tree (nodes at first level)
+          required: false
+          schema:
+            type: integer
+            minimum: 2
+            maximum: 10
+            default: 3
+          example: 3
+        - name: max_width
+          in: query
+          description: Maximum width at any level of the tree
+          required: false
+          schema:
+            type: integer
+            minimum: 3
+            maximum: 15
+            default: 5
+          example: 5
+        - name: min_height
+          in: query
+          description: Minimum height of the tree (depth)
+          required: false
+          schema:
+            type: integer
+            minimum: 2
+            maximum: 8
+            default: 3
+          example: 3
+        - name: max_height
+          in: query
+          description: Maximum height of the tree (depth)
+          required: false
+          schema:
+            type: integer
+            minimum: 3
+            maximum: 12
+            default: 7
+          example: 7
+        - name: language
+          in: query
+          description: Language for resources (e.g., 'pt', 'en', 'es')
+          required: false
+          schema:
+            type: string
+            default: pt
+          example: pt
+        - name: category
+          in: query
+          description: Category for the topic (e.g., 'technology', 'finance', 'health'). If not provided, it will be detected automatically.
+          required: false
+          schema:
+            type: string
+          example: technology
+      responses:
+        '200':
+          description: Task created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskCreationResponse'
+        '400':
+          description: Invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /status/{task_id}:
+    get:
+      tags:
+        - Tasks
+      summary: Get task status
+      description: |
+        Get the status of a task.
+        
+        This endpoint returns detailed information about a task, including its progress, messages, and result (if completed).
+      operationId: getTaskStatus
+      parameters:
+        - name: task_id
+          in: path
+          description: The ID of the task to check
+          required: true
+          schema:
+            type: string
+          example: 550e8400-e29b-41d4-a716-446655440000
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskInfo'
+        '404':
+          description: Task not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /tasks:
+    get:
+      tags:
+        - Tasks
+      summary: List all tasks
+      description: |
+        List all tasks.
+        
+        This endpoint returns a list of all tasks in the server.
+      operationId: listTasks
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaskInfo'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /cache_stats:
+    get:
+      tags:
+        - Cache
+      summary: Get cache statistics
+      description: |
+        Get statistics about the cache.
+        
+        This endpoint returns statistics about the cache, including the number of items in the cache
+        and information about the domain method cache that stores which scraping method works best for each domain.
+      operationId: getCacheStats
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CacheStats'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /clear_cache:
+    post:
+      tags:
+        - Cache
+      summary: Clear cache
+      description: |
+        Clear the cache.
+        
+        This endpoint allows clearing the cache based on a pattern. Use with caution as it will remove cached data.
+      operationId: clearCache
+      parameters:
+        - name: pattern
+          in: query
+          description: |
+            Pattern to match cache keys. Default is "*" which clears all cache.
+            Examples: "mcp:*" for all MCPs, "search:*" for all search results.
+          required: false
+          schema:
+            type: string
+            default: "*"
+          example: "mcp:*"
+        - name: clear_domain_cache
+          in: query
+          description: Whether to also clear the domain method cache that stores which scraping method works best for each domain.
+          required: false
+          schema:
+            type: boolean
+            default: false
+          example: false
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClearCacheResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    MCP:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the MCP
+          example: mcp_abc123
+        title:
+          type: string
+          description: Title of the learning path
+          example: Learning Path: Python
+        description:
+          type: string
+          description: Description of the learning path
+          example: A comprehensive learning path to master Python.
+        topic:
+          type: string
+          description: The topic of the learning path
+          example: Python
+        category:
+          type: string
+          description: The category of the topic
+          example: technology
+        language:
+          type: string
+          description: The language of the resources
+          example: pt
+        nodes:
+          type: object
+          description: Dictionary of nodes in the learning path
+          additionalProperties:
+            $ref: '#/components/schemas/Node'
+        totalHours:
+          type: integer
+          description: Estimated total hours to complete the learning path
+          example: 40
+        tags:
+          type: array
+          description: Tags related to the learning path
+          items:
+            type: string
+          example: ["python", "programming", "technology"]
+    
+    Node:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the node
+          example: node_xyz789
+        title:
+          type: string
+          description: Title of the node
+          example: Introduction to Python
+        description:
+          type: string
+          description: Description of the node
+          example: Get started with Python and learn the basic concepts.
+        type:
+          type: string
+          description: Type of the node
+          example: lesson
+          enum: [lesson, exercise_set, project, quiz]
+        resources:
+          type: array
+          description: List of resources for the node
+          items:
+            $ref: '#/components/schemas/Resource'
+        prerequisites:
+          type: array
+          description: List of prerequisite node IDs
+          items:
+            type: string
+          example: []
+        visualPosition:
+          type: object
+          description: Visual position of the node in the learning path
+          properties:
+            x:
+              type: number
+              description: X coordinate
+              example: 0
+            y:
+              type: number
+              description: Y coordinate
+              example: 0
+            level:
+              type: integer
+              description: Level in the tree
+              example: 0
+        quiz:
+          $ref: '#/components/schemas/Quiz'
+          nullable: true
+    
+    Resource:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the resource
+          example: resource_123
+        title:
+          type: string
+          description: Title of the resource
+          example: Python for Beginners
+        url:
+          type: string
+          description: URL of the resource
+          example: https://example.com/python-beginners
+        type:
+          type: string
+          description: Type of the resource
+          example: article
+          enum: [article, video, documentation, tutorial, exercise, quiz]
+        description:
+          type: string
+          description: Description of the resource
+          example: A beginner's guide to Python programming.
+          nullable: true
+        duration:
+          type: integer
+          description: Duration of the resource in minutes (for videos)
+          example: 15
+          nullable: true
+        readTime:
+          type: integer
+          description: Estimated reading time in minutes (for articles)
+          example: 10
+          nullable: true
+        difficulty:
+          type: string
+          description: Difficulty level of the resource
+          example: beginner
+          enum: [beginner, intermediate, advanced]
+          nullable: true
+        thumbnail:
+          type: string
+          description: URL of the resource thumbnail
+          example: https://example.com/thumbnail.jpg
+          nullable: true
+    
+    Quiz:
+      type: object
+      properties:
+        questions:
+          type: array
+          description: List of questions in the quiz
+          items:
+            $ref: '#/components/schemas/Question'
+        passingScore:
+          type: integer
+          description: Passing score for the quiz
+          example: 70
+    
+    Question:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the question
+          example: q_abc123
+        text:
+          type: string
+          description: Text of the question
+          example: What is Python?
+        options:
+          type: array
+          description: List of options for the question
+          items:
+            type: string
+          example: ["A programming language", "A snake", "A database", "A web framework"]
+        correctOptionIndex:
+          type: integer
+          description: Index of the correct option
+          example: 0
+    
+    TaskCreationResponse:
+      type: object
+      properties:
+        task_id:
+          type: string
+          description: Unique identifier for the task
+          example: 550e8400-e29b-41d4-a716-446655440000
+        status:
+          type: string
+          description: Status of the task creation
+          example: accepted
+          enum: [accepted]
+        message:
+          type: string
+          description: Message about the task creation
+          example: Task created successfully
+          nullable: true
+    
+    TaskInfo:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the task
+          example: 550e8400-e29b-41d4-a716-446655440000
+        description:
+          type: string
+          description: Description of the task
+          example: Generate MCP for topic: Python
+        status:
+          type: string
+          description: Status of the task
+          example: running
+          enum: [pending, running, completed, failed, canceled]
+        progress:
+          type: integer
+          description: Progress of the task (0-100)
+          example: 40
+        result:
+          type: object
+          description: Result of the task (if completed)
+          nullable: true
+        error:
+          type: string
+          description: Error message (if failed)
+          example: No resources found for topic
+          nullable: true
+        created_at:
+          type: number
+          description: Timestamp when the task was created
+          example: 1650123456.789
+        updated_at:
+          type: number
+          description: Timestamp when the task was last updated
+          example: 1650123466.789
+        completed_at:
+          type: number
+          description: Timestamp when the task was completed
+          example: 1650123486.789
+          nullable: true
+        messages:
+          type: array
+          description: List of messages about the task progress
+          items:
+            type: object
+            properties:
+              time:
+                type: number
+                description: Timestamp of the message
+                example: 1650123456.789
+              message:
+                type: string
+                description: Message text
+                example: Task started
+    
+    CacheStats:
+      type: object
+      properties:
+        status:
+          type: string
+          description: Status of the operation
+          example: success
+        cache:
+          type: object
+          description: Cache statistics
+          properties:
+            total_keys:
+              type: integer
+              description: Total number of keys in the cache
+              example: 42
+            info:
+              type: object
+              description: Additional cache information
+              additionalProperties:
+                type: object
+        domain_method_cache:
+          type: object
+          description: Domain method cache statistics
+          properties:
+            totalDomains:
+              type: integer
+              description: Total number of domains in the cache
+              example: 15
+            simpleMethodCount:
+              type: integer
+              description: Number of domains using the simple method
+              example: 10
+            puppeteerMethodCount:
+              type: integer
+              description: Number of domains using the puppeteer method
+              example: 5
+            domains:
+              type: array
+              description: List of domains in the cache
+              items:
+                type: object
+                properties:
+                  domain:
+                    type: string
+                    description: Domain name
+                    example: example.com
+                  method:
+                    type: string
+                    description: Method used for the domain
+                    example: simple
+                  successRate:
+                    type: number
+                    description: Success rate of the method
+                    example: 0.95
+                  usageCount:
+                    type: integer
+                    description: Number of times the method was used
+                    example: 12
+                  lastUpdated:
+                    type: string
+                    description: Timestamp of the last update
+                    example: 2023-05-15T14:30:45Z
+    
+    ClearCacheResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          description: Status of the operation
+          example: success
+        message:
+          type: string
+          description: Message about the operation
+          example: Cleared 15 items from cache
+        pattern:
+          type: string
+          description: Pattern used to match cache keys
+          example: mcp:*
+        count:
+          type: integer
+          description: Number of items cleared from the cache
+          example: 15
+        domain_cache_cleared:
+          type: integer
+          description: Number of items cleared from the domain method cache
+          example: 0
+    
+    Error:
+      type: object
+      properties:
+        detail:
+          type: string
+          description: Error message
+          example: No resources found for topic: unknown_topic

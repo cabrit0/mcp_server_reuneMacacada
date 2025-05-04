@@ -1,20 +1,48 @@
+# API e servidor
 fastapi==0.115.12
 uvicorn[standard]==0.34.0
+pydantic>=2.0.0
 python-dotenv==1.1.0
+
+# HTTP e scraping
 requests==2.32.2
+aiohttp>=3.8.0
 beautifulsoup4==4.13.3
 lxml==5.3.2
 pyppeteer==2.0.0
+pyppeteer-stealth>=0.1.0
+
+# Serviços de busca e integração
 duckduckgo-search>=7.5.5
+yt-dlp>=2023.7.6
+
+# Processamento de dados
 scikit-learn>=1.0.0
 numpy>=1.20.0
-yt-dlp>=2023.7.6
-pydantic>=2.0.0
-aiohttp>=3.8.0
-rich>=12.0.0
 
-# Novas dependências para otimizações de performance
-redis>=5.0.0
+# Utilitários
+rich>=12.0.0
 msgpack>=1.0.5
-pyppeteer>=0.2.6
 cachetools>=5.3.0
+tenacity>=8.2.0  # Para retry com backoff exponencial
+asyncio>=3.4.3   # Para melhor suporte a operações assíncronas
+
+# Testes
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.1.0
+httpx>=0.24.0    # Cliente HTTP para testes de API
+
+# Documentação
+mkdocs>=1.4.0
+mkdocs-material>=9.0.0
+
+# Desenvolvimento
+black>=23.0.0    # Formatação de código
+isort>=5.12.0    # Ordenação de imports
+flake8>=6.0.0    # Linting
+mypy>=1.0.0      # Verificação de tipos
+
+# Dependências opcionais (comentadas, mas disponíveis para implementação futura)
+# redis>=5.0.0   # Para cache distribuído
+# prometheus-client>=0.16.0  # Para métricas e monitoramento

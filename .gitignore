@@ -26,6 +26,10 @@ ENV/
 
 # Environment variables
 .env
+.env.local
+.env.development
+.env.test
+.env.production
 
 # IDE
 .idea/
@@ -42,6 +46,9 @@ Thumbs.db
 tmp/
 temp/
 .cache/
+.pytest_cache/
+.coverage
+htmlcov/
 
 # Node.js
 node_modules/
@@ -54,29 +61,40 @@ yarn-error.log
 package-lock.json
 yarn.lock
 
-# Arquivos de teste
-test_*.py
-test_server.py
-
-# Redis
-dump.rdb
-*.rdb
-redis-data/
+# Arquivos de teste na raiz (os testes organizados estão em /tests)
+/test_*.py
 
 # Arquivos específicos do projeto
-.pytest_cache/
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.coverage
-htmlcov/
-
-# Arquivos JSON temporários (exceto package.json)
-# Não ignorar package.json
+# Arquivos de dados temporários
+data/temp/
+data/cache/
 
 # Arquivos de configuração local
-.env.local
-.env.development
-.env.test
-.env.production
+config.local.py
+settings.local.py
+*_local.*
+*.local.*
+run_local.bat
+
+# Arquivos de log
+logs/
+*.log.*
+
+# Arquivos de banco de dados
+*.db
+*.sqlite
+*.sqlite3
+
+# Arquivos de cobertura de testes
+.coverage.*
+coverage.xml
+.pytest_cache/
+
+# Arquivos de configuração local do IDE
+.idea/workspace.xml
+.idea/tasks.xml
+.vscode/settings.json
+
+# Puppeteer
+.puppeteer/
+.puppeteer-cache/
