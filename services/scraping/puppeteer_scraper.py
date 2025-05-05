@@ -81,7 +81,11 @@ class PuppeteerScraper(BaseScraper):
 
                 # Configure timeout
                 try:
-                    await page.setDefaultNavigationTimeout(timeout * 1000)
+                    # Check if page is valid and has the method
+                    if page and hasattr(page, 'setDefaultNavigationTimeout'):
+                        await page.setDefaultNavigationTimeout(timeout * 1000)
+                    else:
+                        self.logger.warning("Cannot set navigation timeout: page object is invalid or missing method")
                 except Exception as e:
                     self.logger.error(f"Error configuring timeout: {str(e)}")
                     # Continue execution even if timeout configuration fails

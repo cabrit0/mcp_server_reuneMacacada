@@ -5,6 +5,7 @@ Router for health check endpoints.
 from fastapi import APIRouter
 
 from infrastructure.logging import logger
+from infrastructure.circuit_breaker import CircuitBreaker
 from api.routers.base_router import BaseRouter
 
 
@@ -40,6 +41,14 @@ class HealthRouter(BaseRouter):
             description="Health check endpoint to verify the server is running."
         )
 
+        self.router.add_api_route(
+            "/health/circuit-breakers",
+            self.circuit_breaker_status,
+            methods=["GET"],
+            summary="Circuit breaker status",
+            description="Get the status of all circuit breakers."
+        )
+
     async def health_check(self):
         """
         Health check endpoint to verify the server is running.
@@ -49,3 +58,15 @@ class HealthRouter(BaseRouter):
         """
         self.logger.debug("Health check requested")
         return {"status": "ok"}
+
+    async def circuit_breaker_status(self):
+        """
+        Get the status of all circuit breakers.
+
+        Returns:
+            Dictionary with circuit breaker status
+        """
+        self.logger.debug("Circuit breaker status requested")
+        return {
+            "circuit_breakers": CircuitBreaker.get_all_statuses()
+        }

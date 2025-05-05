@@ -28,13 +28,15 @@ class BraveSearch(BaseSearch):
             cache_ttl: Cache TTL in seconds (default: 1 day)
         """
         super().__init__(name="brave", cache_ttl=cache_ttl)
-        
+
         # Get API key from config
         search_config = config.get_section("SEARCH")
         self.api_key = search_config.get("brave_api_key")
-        
+
         if not self.api_key:
             self.logger.warning("Brave Search API key not configured. Brave Search will not work.")
+        else:
+            self.logger.info("Brave Search API key is configured. Brave Search is ready to use.")
 
     async def _search_impl(self, query: str, max_results: int, language: str) -> List[Dict[str, Any]]:
         """
@@ -51,7 +53,7 @@ class BraveSearch(BaseSearch):
         if not self.api_key:
             self.logger.error("Brave Search API key not configured")
             return []
-            
+
         # Prepare request parameters
         params = {
             "q": query,
@@ -60,26 +62,26 @@ class BraveSearch(BaseSearch):
             "ui_lang": language,
             "safesearch": "moderate"
         }
-        
+
         headers = {
             "Accept": "application/json",
             "Accept-Language": language,
             "X-Subscription-Token": self.api_key,
             "User-Agent": self.get_random_user_agent()
         }
-        
+
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(self.API_BASE_URL, params=params, headers=headers) as response:
                     if response.status != 200:
                         self.logger.error(f"Brave Search API error: {response.status}")
                         return []
-                        
+
                     data = await response.json()
-                    
+
                     # Extract search results
                     results = []
-                    
+
                     if "web" in data and "results" in data["web"]:
                         for item in data["web"]["results"]:
                             results.append({
@@ -87,7 +89,7 @@ class BraveSearch(BaseSearch):
                                 "url": item.get("url", ""),
                                 "description": item.get("description", "")
                             })
-                    
+
                     return results
         except Exception as e:
             self.logger.error(f"Error in Brave Search: {str(e)}")

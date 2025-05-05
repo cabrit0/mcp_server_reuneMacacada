@@ -42,14 +42,15 @@ LOGGING = {
 
 # Search settings
 SEARCH = {
-    'default_engine': 'duckduckgo',
+    'default_engine': 'fallback',  # Changed from 'duckduckgo' to 'fallback' to use both engines
     'max_results_default': int(os.environ.get('MAX_RESOURCES_DEFAULT', 15)),
     'min_results': 5,
     'max_results': 30,
     'timeout': 15,  # seconds
     'rate_limit': {
         'requests_per_minute': 10
-    }
+    },
+    'brave_api_key': os.environ.get('BRAVE_API_KEY', None)  # Added Brave Search API key
 }
 
 # Scraping settings

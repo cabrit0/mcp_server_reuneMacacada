@@ -1,0 +1,17 @@
+{
+    "scraping": {
+        "timeout_default": 8,
+        "timeout_min": 3,
+        "timeout_max": 15
+    },
+    "search": {
+        "timeout_default": 10,
+        "timeout_min": 5,
+        "timeout_max": 20
+    },
+    "youtube": {
+        "timeout_default": 8,
+        "timeout_min": 3,
+        "timeout_max": 15
+    }
+}

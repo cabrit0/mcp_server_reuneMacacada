@@ -1,0 +1,19 @@
+{
+    "content_sourcing": {
+        "max_concurrent_searches": 2,
+        "max_concurrent_scrapes": 3,
+        "max_concurrent_youtube_searches": 4,
+        "batch_size": 2,
+        "global_timeout": 30
+    },
+    "path_generator": {
+        "max_concurrent_video_fetches": 5,
+        "video_fetch_timeout": 5
+    },
+    "scraping": {
+        "max_concurrent_requests": 4,
+        "max_concurrent_puppeteer": 2,
+        "request_timeout": 5,
+        "puppeteer_timeout": 8
+    }
+}

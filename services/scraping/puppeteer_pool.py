@@ -355,79 +355,133 @@ class PuppeteerPool:
 
         return closed_count
 
-    async def create_optimized_page(self, browser: Browser) -> Page:
+    async def create_optimized_page(self, browser: Browser) -> Optional[Page]:
         """
         Create and configure an optimized page for web scraping.
+        Includes retry logic and better error handling.
 
         Args:
             browser: Browser instance to create page in
 
         Returns:
-            Configured Page instance
+            Configured Page instance or None if failed
         """
-        # Create a new page
-        page = await browser.newPage()
+        # Retry logic for page creation
+        max_retries = 3
+        retry_count = 0
 
-        # Set a realistic user agent
-        user_agents = [
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.107 Safari/537.36',
-            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.2 Safari/605.1.15',
-            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36',
-            'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.107 Safari/537.36'
-        ]
-        import random
-        await page.setUserAgent(random.choice(user_agents))
-
-        # Set viewport
-        await page.setViewport({'width': 1366, 'height': 768})
-
-        # Disable cache for fresh content
-        await page.setCacheEnabled(False)
-
-        # Set timeouts
-        try:
-            await page.setDefaultNavigationTimeout(30000)  # 30 seconds
-            await page.setDefaultTimeout(30000)  # 30 seconds
-        except Exception as e:
-            self.logger.error(f"Error configuring timeout: {str(e)}")
-
-        # Optimize resource loading
-        try:
-            # Intercept requests to block unnecessary resources
-            await page.setRequestInterception(True)
-
-            async def intercept_request(request):
-                # Block unnecessary resource types to improve performance
-                resource_type = request.resourceType.lower()
-                blocked_types = ['image', 'media', 'font', 'stylesheet', 'other']
-
-                if resource_type in blocked_types:
-                    await request.abort()
-                else:
-                    await request.continue_()
-
-            page.on('request', intercept_request)
-        except Exception as e:
-            self.logger.error(f"Error setting up request interception: {str(e)}")
-            # Disable request interception if it fails
+        while retry_count < max_retries:
             try:
-                await page.setRequestInterception(False)
-            except:
-                pass
+                # Check if browser is still connected
+                if not browser or not hasattr(browser, 'newPage'):
+                    self.logger.error("Browser instance is invalid or disconnected")
+                    return None
 
-        # Apply stealth mode if available
-        if self.stealth_mode:
-            try:
-                from pyppeteer_stealth import stealth
-                await stealth(page)
-                self.logger.debug("Applied stealth mode to page")
-            except ImportError:
-                self.logger.warning("pyppeteer_stealth not available, skipping stealth mode")
+                # Create a new page
+                page = await browser.newPage()
+                if not page:
+                    raise Exception("browser.newPage() returned None")
+
+                # Set a realistic user agent
+                user_agents = [
+                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.107 Safari/537.36',
+                    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.2 Safari/605.1.15',
+                    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36',
+                    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.107 Safari/537.36'
+                ]
+                import random
+
+                # Apply page configurations with proper error handling
+                try:
+                    if hasattr(page, 'setUserAgent'):
+                        await page.setUserAgent(random.choice(user_agents))
+                except Exception as e:
+                    self.logger.warning(f"Error setting user agent: {str(e)}")
+
+                # Set viewport
+                try:
+                    if hasattr(page, 'setViewport'):
+                        await page.setViewport({'width': 1366, 'height': 768})
+                except Exception as e:
+                    self.logger.warning(f"Error setting viewport: {str(e)}")
+
+                # Disable cache for fresh content
+                try:
+                    if hasattr(page, 'setCacheEnabled'):
+                        await page.setCacheEnabled(False)
+                except Exception as e:
+                    self.logger.warning(f"Error disabling cache: {str(e)}")
+
+                # Set timeouts
+                try:
+                    if hasattr(page, 'setDefaultNavigationTimeout'):
+                        await page.setDefaultNavigationTimeout(30000)  # 30 seconds
+                    if hasattr(page, 'setDefaultTimeout'):
+                        await page.setDefaultTimeout(30000)  # 30 seconds
+                except Exception as e:
+                    self.logger.warning(f"Error configuring timeout: {str(e)}")
+
+                # Optimize resource loading
+                try:
+                    # Intercept requests to block unnecessary resources
+                    if hasattr(page, 'setRequestInterception'):
+                        await page.setRequestInterception(True)
+
+                        async def intercept_request(request):
+                            try:
+                                # Block unnecessary resource types to improve performance
+                                if hasattr(request, 'resourceType'):
+                                    resource_type = request.resourceType.lower()
+                                    blocked_types = ['image', 'media', 'font', 'stylesheet', 'other']
+
+                                    if resource_type in blocked_types:
+                                        await request.abort()
+                                    else:
+                                        await request.continue_()
+                                else:
+                                    await request.continue_()
+                            except Exception as req_err:
+                                self.logger.warning(f"Error in request interception: {str(req_err)}")
+                                try:
+                                    await request.continue_()
+                                except:
+                                    pass
+
+                        page.on('request', lambda req: asyncio.ensure_future(intercept_request(req)))
+                except Exception as e:
+                    self.logger.warning(f"Error setting up request interception: {str(e)}")
+                    # Disable request interception if it fails
+                    try:
+                        if hasattr(page, 'setRequestInterception'):
+                            await page.setRequestInterception(False)
+                    except:
+                        pass
+
+                # Apply stealth mode if available
+                if self.stealth_mode:
+                    try:
+                        from pyppeteer_stealth import stealth
+                        await stealth(page)
+                        self.logger.debug("Applied stealth mode to page")
+                    except ImportError:
+                        self.logger.warning("pyppeteer_stealth not available, skipping stealth mode")
+                    except Exception as e:
+                        self.logger.warning(f"Error applying stealth mode to page: {str(e)}")
+
+                self.logger.debug("Successfully created and configured optimized page")
+                return page
+
             except Exception as e:
-                self.logger.error(f"Error applying stealth mode to page: {str(e)}")
+                retry_count += 1
+                self.logger.warning(f"Failed to create page (attempt {retry_count}/{max_retries}): {str(e)}")
 
-        return page
+                if retry_count < max_retries:
+                    # Wait before retrying
+                    await asyncio.sleep(1)
+                else:
+                    self.logger.error(f"All {max_retries} attempts to create page failed")
+                    return None
 
     async def close_all(self) -> None:
         """Close all browsers when shutting down the application."""

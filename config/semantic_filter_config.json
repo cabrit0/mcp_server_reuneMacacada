@@ -1,0 +1,14 @@
+{
+    "similarity_threshold": 0.15,
+    "min_required_resources": 8,
+    "title_match_boost": 0.5,
+    "description_match_boost": 0.3,
+    "word_match_boost": 0.2,
+    "url_match_boost": 0.1,
+    "resource_type_boosts": {
+        "tutorial": 0.2,
+        "documentation": 0.2,
+        "article": 0.2,
+        "video": 0.15
+    }
+}

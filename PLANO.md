@@ -16,7 +16,7 @@ O objetivo é transformar o MCP Server em uma plataforma capaz de gerar árvores
 
 ### Tarefa 1.2: Diversificar as Fontes de Recursos
 
-- [ ] **1.2.1**: Melhorar a integração com fontes existentes
+- [x] **1.2.1**: Melhorar a integração com fontes existentes ✅
   - Otimizar a extração de dados do YouTube para obter resultados mais relevantes
   - Implementar integração com repositórios de documentação gratuita
 - [ ] **1.2.2**: Implementar busca em sites especializados por categoria

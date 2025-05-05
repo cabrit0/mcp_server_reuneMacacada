@@ -9,7 +9,7 @@ from typing import Dict, List, Tuple, Optional, Set
 
 from infrastructure.logging import logger
 from api.models import Node, Resource, Quiz, ExerciseSet
-from services.youtube import youtube
+from services.youtube import get_youtube
 from core.path_generator.node_structure_service import NodeStructureService
 from core.path_generator.quiz_generator_service import QuizGeneratorService
 from core.path_generator.exercise_generator_service import ExerciseGeneratorService
@@ -49,6 +49,7 @@ class TreeBasedNodeStructure(NodeStructureService):
     ) -> Tuple[Dict[str, Node], List[str]]:
         """
         Create a node structure with the given subtopics.
+        Optimized for performance with parallel video fetching.
 
         Args:
             topic: The main topic
@@ -96,7 +97,8 @@ class TreeBasedNodeStructure(NodeStructureService):
                     used_resource_ids.add(r['id'])
 
         # Use the first two resources for the root node
-        root_node.resources = resources[:2] if resources else []
+        # Assign more resources to the root node (up to 3)
+        root_node.resources = resources[:3] if resources else []
 
         # Get remaining resources
         remaining_resources = [r for r in resources if r.id not in used_resource_ids]
@@ -105,6 +107,18 @@ class TreeBasedNodeStructure(NodeStructureService):
         num_main_branches = random.randint(min_width, max_width)  # Use min_width and max_width
         main_branch_ids = []
 
+        # Pre-fetch videos for main branches in parallel
+        main_branch_video_tasks = []
+        for i in range(min(num_main_branches, len(subtopics))):
+            subtopic = subtopics[i]
+            main_branch_video_tasks.append(
+                get_youtube().search_videos_for_topic(topic, subtopic, max_results=1, language=language)
+            )
+
+        # Wait for all video tasks to complete
+        main_branch_videos_results = await asyncio.gather(*main_branch_video_tasks, return_exceptions=True)
+
+        # Create main branches
         for i in range(num_main_branches):
             if i < len(subtopics):
                 subtopic = subtopics[i]
@@ -113,19 +127,20 @@ class TreeBasedNodeStructure(NodeStructureService):
                 # Assign some resources to this branch
                 branch_resources = []
 
-                # Buscar vídeos específicos para este subtópico
-                subtopic_videos = await youtube.search_videos_for_topic(topic, subtopic, max_results=1, language=language)
+                # Use pre-fetched videos
+                if i < len(main_branch_videos_results) and not isinstance(main_branch_videos_results[i], Exception):
+                    subtopic_videos = main_branch_videos_results[i]
 
-                # Adicionar vídeos específicos para este subtópico
-                for video in subtopic_videos:
-                    branch_resources.append(video)
-                    if hasattr(video, 'id'):
-                        used_resource_ids.add(video.id)
-                    elif isinstance(video, dict) and 'id' in video:
-                        used_resource_ids.add(video['id'])
+                    # Adicionar vídeos específicos para este subtópico
+                    for video in subtopic_videos:
+                        branch_resources.append(video)
+                        if hasattr(video, 'id'):
+                            used_resource_ids.add(video.id)
+                        elif isinstance(video, dict) and 'id' in video:
+                            used_resource_ids.add(video['id'])
 
-                # Adicionar outros recursos gerais
-                for _ in range(min(1, len(remaining_resources))):
+                # Adicionar outros recursos gerais (até 2 por ramo)
+                for _ in range(min(2, len(remaining_resources))):
                     if remaining_resources:
                         resource = random.choice(remaining_resources)
                         branch_resources.append(resource)
@@ -152,7 +167,63 @@ class TreeBasedNodeStructure(NodeStructureService):
         current_level = 2
         current_subtopic_index = num_main_branches
 
+        # Calculate how many subnodes we need to create
+        remaining_nodes = max_nodes - len(nodes)
+        remaining_subtopics = len(subtopics) - num_main_branches
+
+        # Determine how many subtopics to use for each branch
+        subtopics_per_branch = {}
+        if remaining_subtopics > 0 and len(main_branch_ids) > 0:
+            # Distribute subtopics evenly across branches
+            base_count = remaining_subtopics // len(main_branch_ids)
+            extra = remaining_subtopics % len(main_branch_ids)
+
+            for i, branch_id in enumerate(main_branch_ids):
+                subtopics_per_branch[branch_id] = base_count + (1 if i < extra else 0)
+
+        # Pre-fetch videos for subnodes in parallel
+        subnode_video_tasks = {}
+        subnode_subtopics = {}
+
+        for branch_id in main_branch_ids:
+            if current_subtopic_index >= len(subtopics):
+                break
+
+            # Decide how many nodes to create in this branch based on min_height and max_height
+            if random.random() < depth_preference:
+                # More depth - create a longer path
+                branch_length = random.randint(min_height - 1, max_height - 1)  # Adjust for height parameters
+                branch_width = 1  # Just one path
+            else:
+                # More breadth - create a wider branch
+                branch_length = random.randint(1, min_height)  # At least min_height levels
+                branch_width = random.randint(2, min(3, max_width))  # Control width with max_width
+
+            # Calculate how many subtopics we need for this branch
+            nodes_in_branch = min(branch_length * branch_width, subtopics_per_branch.get(branch_id, 0))
+
+            # Pre-fetch videos for this branch's subtopics
+            for j in range(nodes_in_branch):
+                if current_subtopic_index < len(subtopics):
+                    subtopic = subtopics[current_subtopic_index]
+                    task_key = f"{branch_id}_{j}"
+                    subnode_video_tasks[task_key] = get_youtube().search_videos_for_topic(
+                        topic, subtopic, max_results=1, language=language
+                    )
+                    subnode_subtopics[task_key] = subtopic
+                    current_subtopic_index += 1
+
+        # Wait for all video tasks to complete
+        subnode_videos_results = {}
+        for task_key, task in subnode_video_tasks.items():
+            try:
+                subnode_videos_results[task_key] = await asyncio.wait_for(task, timeout=5)
+            except (asyncio.TimeoutError, Exception) as e:
+                self.logger.warning(f"Error fetching videos for subnode {task_key}: {str(e)}")
+                subnode_videos_results[task_key] = []
+
         # For each main branch, create a path of nodes
+        current_subtopic_index = num_main_branches  # Reset index
         for branch_id in main_branch_ids:
             # Decide how many nodes to create in this branch based on min_height and max_height
             if random.random() < depth_preference:
@@ -179,27 +250,32 @@ class TreeBasedNodeStructure(NodeStructureService):
                             # Assign resources
                             node_resources = []
 
-                            # Buscar vídeos específicos para este subtópico
-                            node_videos = await youtube.search_videos_for_topic(topic, subtopic, max_results=1, language=language)
+                            # Use pre-fetched videos
+                            task_key = f"{branch_id}_{level * branch_width + width}"
+                            if task_key in subnode_videos_results:
+                                node_videos = subnode_videos_results[task_key]
 
-                            # Adicionar vídeos específicos para este subtópico
-                            for video in node_videos:
-                                node_resources.append(video)
-                                if hasattr(video, 'id'):
-                                    used_resource_ids.add(video.id)
-                                elif isinstance(video, dict) and 'id' in video:
-                                    used_resource_ids.add(video['id'])
+                                # Adicionar vídeos específicos para este subtópico
+                                for video in node_videos:
+                                    node_resources.append(video)
+                                    if hasattr(video, 'id'):
+                                        used_resource_ids.add(video.id)
+                                    elif isinstance(video, dict) and 'id' in video:
+                                        used_resource_ids.add(video['id'])
 
-                            # Adicionar outros recursos gerais
-                            for _ in range(min(1, len(remaining_resources))):
-                                if remaining_resources:
-                                    resource = random.choice(remaining_resources)
-                                    node_resources.append(resource)
-                                    remaining_resources.remove(resource)
-                                    if hasattr(resource, 'id'):
-                                        used_resource_ids.add(resource.id)
-                                    elif isinstance(resource, dict) and 'id' in resource:
-                                        used_resource_ids.add(resource['id'])
+                            # Adicionar outros recursos gerais (até 2 por subnó)
+                            # Aumentar a probabilidade de atribuir recursos aos nós
+                            num_resources = min(2, len(remaining_resources))
+                            if random.random() < 0.7:  # 70% de chance de atribuir recursos
+                                for _ in range(num_resources):
+                                    if remaining_resources:
+                                        resource = random.choice(remaining_resources)
+                                        node_resources.append(resource)
+                                        remaining_resources.remove(resource)
+                                        if hasattr(resource, 'id'):
+                                            used_resource_ids.add(resource.id)
+                                        elif isinstance(resource, dict) and 'id' in resource:
+                                            used_resource_ids.add(resource['id'])
 
                             # Determine node type
                             if level == branch_length - 1 and random.random() < 0.5:
@@ -241,17 +317,20 @@ class TreeBasedNodeStructure(NodeStructureService):
 
             node_id = f"extra_node_{len(nodes)}_{uuid.uuid4().hex[:8]}"
 
-            # Assign resources
+            # Assign resources (até 2 por nó extra)
             node_resources = []
-            for _ in range(min(1, len(remaining_resources))):
-                if remaining_resources:
-                    resource = random.choice(remaining_resources)
-                    node_resources.append(resource)
-                    remaining_resources.remove(resource)
-                    if hasattr(resource, 'id'):
-                        used_resource_ids.add(resource.id)
-                    elif isinstance(resource, dict) and 'id' in resource:
-                        used_resource_ids.add(resource['id'])
+            num_resources = min(2, len(remaining_resources))
+            # Aumentar a probabilidade de atribuir recursos aos nós extras
+            if random.random() < 0.8:  # 80% de chance de atribuir recursos
+                for _ in range(num_resources):
+                    if remaining_resources:
+                        resource = random.choice(remaining_resources)
+                        node_resources.append(resource)
+                        remaining_resources.remove(resource)
+                        if hasattr(resource, 'id'):
+                            used_resource_ids.add(resource.id)
+                        elif isinstance(resource, dict) and 'id' in resource:
+                            used_resource_ids.add(resource['id'])
 
             # Create the node
             node = Node(
@@ -273,9 +352,32 @@ class TreeBasedNodeStructure(NodeStructureService):
 
         # Distribute any remaining resources
         if remaining_resources:
-            for resource in remaining_resources:
-                # Pick a random node
-                node_id = random.choice(node_ids)
+            # Identificar nós sem recursos
+            nodes_without_resources = [node_id for node_id in node_ids if not nodes[node_id].resources]
+
+            # Priorizar nós sem recursos
+            if nodes_without_resources:
+                # Distribuir recursos para nós sem recursos primeiro
+                for node_id in nodes_without_resources:
+                    if not remaining_resources:
+                        break
+                    # Atribuir até 2 recursos por nó sem recursos
+                    for _ in range(min(2, len(remaining_resources))):
+                        if remaining_resources:
+                            resource = remaining_resources.pop(0)
+                            nodes[node_id].resources.append(resource)
+
+            # Distribuir recursos restantes aleatoriamente
+            while remaining_resources:
+                # Pick a random node, priorizando nós com poucos recursos
+                nodes_with_few_resources = [node_id for node_id in node_ids if len(nodes[node_id].resources) < 2]
+                if nodes_with_few_resources:
+                    node_id = random.choice(nodes_with_few_resources)
+                else:
+                    node_id = random.choice(node_ids)
+
+                # Adicionar recurso
+                resource = remaining_resources.pop(0)
                 nodes[node_id].resources.append(resource)
 
         self.logger.info(f"Created node structure with {len(nodes)} nodes for topic '{topic}'")

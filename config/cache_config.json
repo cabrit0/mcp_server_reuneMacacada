@@ -1,0 +1,7 @@
+{
+    "cache_type": "multi_level",
+    "memory_max_size": 2000,
+    "disk_max_size": 20000,
+    "disk_path": "./cache",
+    "sync_interval": 300
+}

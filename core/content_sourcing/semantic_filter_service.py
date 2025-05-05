@@ -78,6 +78,7 @@ class SemanticFilterService:
     ) -> List[Resource]:
         """
         Filter resources based on relevance to the topic.
+        Uses progressive filtering with adaptive thresholds.
 
         Args:
             resources: List of resources to filter
@@ -99,29 +100,60 @@ class SemanticFilterService:
             return cached_result
 
         try:
-            # Calculate relevance scores for each resource
-            filtered_resources = []
-
+            # Pre-calculate all relevance scores to avoid redundant calculations
+            resource_scores = []
             for resource in resources:
-                # Calculate relevance based on keyword matching
-                relevance = self._calculate_simple_similarity(resource, topic)
+                score = self._calculate_simple_similarity(resource, topic)
+                # Store the score with the resource for later use
+                resource_scores.append((resource, score))
 
-                # Filter resources based on relevance threshold
-                if relevance >= similarity_threshold:
-                    filtered_resources.append(resource)
-                    self.logger.debug(f"Resource '{resource.title}' has relevance {relevance:.4f} with topic '{topic}'")
+            # Sort by relevance (highest first)
+            resource_scores.sort(key=lambda x: x[1], reverse=True)
+
+            # Adaptive filtering based on the number of resources
+            min_required = min(15, len(resources))  # At least 15 resources or all if fewer (increased from 8)
+
+            # Log the top 5 resources with their scores for debugging
+            for i, (resource, score) in enumerate(resource_scores[:5]):
+                self.logger.info(f"Top resource {i+1}: {resource.title} - Score: {score:.4f}")
+
+            # Try with a lower threshold to get more resources
+            lower_threshold = max(0.05, similarity_threshold * 0.5)  # Lower the threshold by 50%, but not below 0.05
+            self.logger.info(f"Using lower threshold {lower_threshold} instead of {similarity_threshold} to get more resources")
+
+            filtered_resources = [r for r, score in resource_scores if score >= lower_threshold]
+            self.logger.info(f"Got {len(filtered_resources)} resources with threshold {lower_threshold}")
+
+            # If we don't have enough resources, try with an even lower threshold
+            if len(filtered_resources) < min_required:
+                # Calculate a dynamic threshold that would give us the minimum required resources
+                if len(resource_scores) >= min_required:
+                    # Get the score of the min_required-th resource
+                    dynamic_threshold = resource_scores[min_required-1][1]
+                    # Use the lower of the adjusted threshold or the dynamic one
+                    adjusted_threshold = min(lower_threshold, dynamic_threshold)
+
+                    # Apply the adjusted threshold
+                    filtered_resources = [r for r, score in resource_scores if score >= adjusted_threshold]
+
+                    self.logger.info(f"Adjusted threshold from {lower_threshold} to {adjusted_threshold} to include at least {min_required} resources")
                 else:
-                    self.logger.debug(f"Filtered out resource '{resource.title}' with low relevance {relevance:.4f}")
+                    # If we have fewer resources than min_required, use all of them
+                    filtered_resources = [r for r, _ in resource_scores]
+                    self.logger.info(f"Using all {len(filtered_resources)} resources because we have fewer than {min_required}")
 
-            # Sort resources by relevance (highest first)
-            filtered_resources.sort(key=lambda r: self._calculate_simple_similarity(r, topic), reverse=True)
+            # If we still don't have enough resources, just take the top ones
+            if len(filtered_resources) < min_required and len(resource_scores) >= min_required:
+                filtered_resources = [r for r, _ in resource_scores[:min_required]]
+                self.logger.info(f"Taking top {min_required} resources because filtering didn't yield enough")
 
-            # If we filtered out too many resources, include at least 3 resources
-            if len(filtered_resources) < 3 and len(resources) >= 3:
-                # Sort all resources by relevance
-                sorted_resources = sorted(resources, key=lambda r: self._calculate_simple_similarity(r, topic), reverse=True)
-                # Take the top 3
-                filtered_resources = sorted_resources[:3]
+            # Add relevance scores as metadata for debugging and sorting
+            for i, (resource, score) in enumerate(resource_scores):
+                if resource in filtered_resources:
+                    if not resource.metadata:
+                        resource.metadata = {}
+                    resource.metadata['relevance_score'] = score
+                    resource.metadata['relevance_rank'] = i + 1
 
             # Cache the result
             cache.setex(
@@ -141,6 +173,7 @@ class SemanticFilterService:
     def _calculate_simple_similarity(self, resource: Resource, topic: str) -> float:
         """
         Calculate a simple relevance score based on keyword matching.
+        Optimized for performance with early returns and caching.
 
         Args:
             resource: The resource to compare
@@ -149,41 +182,71 @@ class SemanticFilterService:
         Returns:
             Relevance score (0-1)
         """
-        # Start with a base score
-        score = 0.1
+        # Check if we already calculated this score (in resource metadata)
+        if resource.metadata and 'relevance_score' in resource.metadata:
+            return resource.metadata['relevance_score']
+
+        # Start with a higher base score to be less restrictive
+        score = 0.2  # Increased from 0.1
 
         # Get the title and description
         title = resource.title.lower() if resource.title else ""
+        if not title:  # If no title, still give it a chance
+            return 0.15  # Increased from 0.05
+
         description = resource.description.lower() if resource.description else ""
         topic_lower = topic.lower()
 
-        # Check if topic is in title
+        # Early return for exact matches (high performance optimization)
+        if topic_lower == title:
+            return 0.95  # Almost perfect match
+
+        # Check if topic is in title (high impact)
         if topic_lower in title:
             score += 0.5
+            # If topic is a significant part of the title, boost further
+            if len(topic_lower) > len(title) / 3:
+                score += 0.2
 
         # Check if topic is in description
         if description and topic_lower in description:
             score += 0.3
 
+        # If we already have a high score, we can return early
+        if score >= 0.7:
+            return min(score, 1.0)
+
+        # Prepare topic words once (optimization)
+        # Reduced minimum word length from 3 to 2 to catch more matches
+        topic_words = [w for w in topic_lower.split() if len(w) > 2]
+
         # Check if title contains any word from topic
-        topic_words = topic_lower.split()
-        for word in topic_words:
-            if word in title and len(word) > 3:  # Only consider words longer than 3 characters
-                score += 0.2
+        title_matches = sum(1 for word in topic_words if word in title)
+        if title_matches > 0:
+            # Proportional boost based on how many words match (increased from 0.2)
+            score += 0.25 * (title_matches / max(1, len(topic_words)))
 
         # Check if description contains any word from topic
         if description:
-            for word in topic_words:
-                if word in description and len(word) > 3:
-                    score += 0.1
+            desc_matches = sum(1 for word in topic_words if word in description)
+            if desc_matches > 0:
+                # Proportional boost based on how many words match (increased from 0.1)
+                score += 0.15 * (desc_matches / max(1, len(topic_words)))
 
-        # Boost score for resources with matching type
+        # Boost score for resources with matching type (increased boosts)
         if resource.type in ["tutorial", "documentation", "article"]:
-            score += 0.2
+            score += 0.25  # Increased from 0.2
+        elif resource.type == "video":
+            score += 0.2  # Increased from 0.15
 
-        # Apply a minimum relevance floor for resources with exact topic match in title
-        if topic_lower == title:
-            score = max(score, 0.8)
+        # URL relevance boost (increased from 0.1)
+        if resource.url and topic_lower in resource.url.lower():
+            score += 0.15
+
+        # Store the score in metadata for future use
+        if not resource.metadata:
+            resource.metadata = {}
+        resource.metadata['relevance_score'] = min(score, 1.0)
 
         # Cap the score at 1.0
         return min(score, 1.0)

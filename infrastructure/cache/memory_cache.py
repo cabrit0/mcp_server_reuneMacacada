@@ -112,6 +112,7 @@ class MemoryCache(CacheService):
     def setex(self, key: str, ttl: int, value: Any) -> bool:
         """
         Set a value in the cache with TTL.
+        Implements smart caching to avoid storing empty or invalid results for long periods.
 
         Args:
             key: Cache key
@@ -122,6 +123,26 @@ class MemoryCache(CacheService):
             True if successful
         """
         self.metrics.increment_set_count()
+
+        # Don't cache empty results for long periods
+        if value is None:
+            logger.debug(f"Not caching None value for key {key}")
+            return False
+
+        # Use shorter TTL for empty lists/dicts
+        adjusted_ttl = ttl
+        if isinstance(value, list) and not value:
+            # Empty list - cache for much shorter time (10% of original TTL or 60 seconds, whichever is less)
+            adjusted_ttl = min(int(ttl * 0.1), 60)
+            logger.debug(f"Using shorter TTL ({adjusted_ttl}s) for empty list with key {key}")
+        elif isinstance(value, dict) and not value:
+            # Empty dict - cache for much shorter time (10% of original TTL or 60 seconds, whichever is less)
+            adjusted_ttl = min(int(ttl * 0.1), 60)
+            logger.debug(f"Using shorter TTL ({adjusted_ttl}s) for empty dict with key {key}")
+        elif isinstance(value, list) and len(value) < 3:
+            # Very small list - cache for shorter time (50% of original TTL)
+            adjusted_ttl = int(ttl * 0.5)
+            logger.debug(f"Using shorter TTL ({adjusted_ttl}s) for small list with key {key}")
 
         # Check if cache is full
         if len(self.cache) >= self.max_size and key not in self.cache:
@@ -150,7 +171,7 @@ class MemoryCache(CacheService):
 
         # Store the value
         self.cache[key] = value
-        self.expiry[key] = time.time() + ttl
+        self.expiry[key] = time.time() + adjusted_ttl
         self.access_times[key] = time.time()
         self.metrics.increment_size(1)
 

@@ -35,18 +35,18 @@ class SearchFactory:
         # Use singleton pattern for efficiency
         if search_type in cls._instances:
             return cls._instances[search_type]
-            
+
         # Get configuration
         if config_options is None:
             config_options = {}
-            
+
         # Get cache TTL from config
         search_config = config.get_section("SEARCH")
         cache_ttl = config_options.get("cache_ttl", search_config.get("cache_ttl", 86400))
-        
+
         # Create search instance
         search: SearchService
-        
+
         if search_type == "duckduckgo":
             search = DuckDuckGoSearch(cache_ttl=cache_ttl)
         elif search_type == "brave":
@@ -54,20 +54,25 @@ class SearchFactory:
         elif search_type == "fallback" or search_type == "default":
             # Create fallback search with multiple engines
             engines: List[Tuple[SearchService, float]] = []
-            
+
             # Add DuckDuckGo (primary)
             engines.append((cls.create_search("duckduckgo"), 1.0))
-            
+
             # Add Brave if API key is configured
             if search_config.get("brave_api_key"):
-                engines.append((cls.create_search("brave"), 0.8))
-                
+                logger.info("Brave Search API key is configured. Adding Brave Search to fallback engines.")
+                # Increase Brave's weight to make it more likely to be used
+                engines.append((cls.create_search("brave"), 1.2))
+            else:
+                logger.warning("Brave Search API key is not configured. Only DuckDuckGo will be used.")
+
             search = FallbackSearch(search_engines=engines, cache_ttl=cache_ttl)
+            logger.info(f"Created fallback search with {len(engines)} engines: {', '.join([e[0].name for e in engines])}")
         else:
             logger.warning(f"Unknown search type: {search_type}, falling back to default")
             return cls.create_search("default", config_options)
-            
+
         # Store instance for reuse
         cls._instances[search_type] = search
-        
+
         return search

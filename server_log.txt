@@ -1,0 +1,12 @@
+Checking for required dependencies...
+pyppeteer-stealth is already installed.
+pyppeteer is already installed.
+Checking for Chrome installation...
+Found Chrome at: C:\Program Files\Google\Chrome\Application\chrome.exe
+Set CHROME_EXECUTABLE_PATH=C:\Program Files\Google\Chrome\Application\chrome.exe
+Set PYPPETEER_SKIP_CHROMIUM_DOWNLOAD=1
+2025-05-04 21:49:40 - mcp_server.cache.factory - INFO - Creating memory cache with max_size=1000
+2025-05-04 21:49:40 - mcp_server.cache.memory - INFO - Initializing MemoryCache with maximum size of 1000 items
+2025-05-04 21:49:40 - mcp_server.categories.default - INFO - Initialized DefaultCategoryService with 9 categories
+2025-05-04 21:49:40 - mcp_server.categories.default - INFO - Initialized DefaultCategoryService with 9 categories
+2025-05-04 21:49:42 - mcp_server.lazy_loading - INFO - Lazy loading service: youtube.ytdlp

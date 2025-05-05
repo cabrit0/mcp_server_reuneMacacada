@@ -1,0 +1,22 @@
+{
+    "services": {
+        "youtube.ytdlp": {
+            "depends_on": []
+        },
+        "search.duckduckgo": {
+            "depends_on": []
+        },
+        "search.fallback": {
+            "depends_on": ["search.duckduckgo"]
+        },
+        "scraper.puppeteer": {
+            "depends_on": []
+        },
+        "scraper.adaptive": {
+            "depends_on": ["scraper.puppeteer"]
+        },
+        "content_source.default": {
+            "depends_on": ["search.fallback", "scraper.adaptive"]
+        }
+    }
+}

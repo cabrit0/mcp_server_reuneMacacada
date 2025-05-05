@@ -35,39 +35,46 @@ class YouTubeFactory:
         # Use singleton pattern for efficiency
         if service_type in cls._instances:
             return cls._instances[service_type]
-            
+
         # Get configuration
         if config_options is None:
             config_options = {}
-            
+
         # Get cache TTL from config
         youtube_config = config.get_section("YOUTUBE")
         cache_ttl = config_options.get("cache_ttl", youtube_config.get("cache_ttl", 86400))
-        
+
         # Create service instance
         service: YouTubeService
-        
+
         if service_type == "ytdlp":
+            # Use direct instantiation instead of decorator-based lazy loading
             service = YtDlpService(cache_ttl=cache_ttl)
         elif service_type == "api":
             service = YouTubeApiService(cache_ttl=cache_ttl)
         elif service_type == "fallback" or service_type == "default":
-            # Create fallback service with multiple implementations
+            # Create a simple fallback service first to avoid circular dependencies
+            if "ytdlp" not in cls._instances:
+                # Create YtDlpService first
+                cls._instances["ytdlp"] = YtDlpService(cache_ttl=cache_ttl)
+
+            # Create fallback service with YtDlpService only initially
             services: List[Tuple[YouTubeService, float]] = []
-            
-            # Add YtDlpService (primary)
-            services.append((cls.create_youtube_service("ytdlp"), 1.0))
-            
+            services.append((cls._instances["ytdlp"], 1.0))
+
             # Add YouTubeApiService if API key is configured
             if youtube_config.get("api_key"):
-                services.append((cls.create_youtube_service("api"), 0.8))
-                
+                if "api" not in cls._instances:
+                    cls._instances["api"] = YouTubeApiService(cache_ttl=cache_ttl)
+                services.append((cls._instances["api"], 0.8))
+
             service = FallbackYouTubeService(services=services, cache_ttl=cache_ttl)
         else:
             logger.warning(f"Unknown YouTube service type: {service_type}, falling back to default")
             return cls.create_youtube_service("default", config_options)
-            
+
         # Store instance for reuse
         cls._instances[service_type] = service
-        
+
+        logger.info(f"Created YouTube service of type: {service_type}")
         return service

@@ -178,6 +178,7 @@ class Resource(BaseModel):
     readTime: Optional[int] = None  # in minutes, for articles
     difficulty: Optional[str] = None
     thumbnail: Optional[str] = None  # URL da imagem de thumbnail
+    metadata: Optional[Dict[str, Any]] = None  # Metadados adicionais do recurso
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -206,7 +207,7 @@ class Resource(BaseModel):
     @validator('type')
     def validate_type(cls, v):
         """Valida se o tipo do recurso é válido."""
-        valid_types = ["article", "video", "documentation", "exercise", "tutorial", "course", "book", "tool", "quiz", "other"]
+        valid_types = ["article", "video", "documentation", "exercise", "tutorial", "course", "book", "tool", "quiz", "qa", "other"]
         if v.lower() not in valid_types:
             raise ValueError(f'type deve ser um dos seguintes: {", ".join(valid_types)}')
         return v.lower()

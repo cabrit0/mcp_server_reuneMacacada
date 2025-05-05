@@ -118,11 +118,51 @@ GET /generate_mcp_v2?topic={topic}&difficulty={difficulty}&formats={formats}&max
 - Maior qualidade dos metadados na árvore de aprendizagem
 - Redução de descrições genéricas ou irrelevantes
 
+## 5. Aprimoramento da Extração de Dados do YouTube e Integração com Repositórios de Documentação
+
+### Arquivos Criados:
+
+- `services/documentation/documentation_service.py`: Interface base para serviços de documentação
+- `services/documentation/documentation_factory.py`: Factory para criar e gerenciar serviços de documentação
+- `services/documentation/mdn_documentation_service.py`: Serviço para MDN Web Docs
+- `services/documentation/python_documentation_service.py`: Serviço para Python Documentation
+- `services/documentation/github_documentation_service.py`: Serviço para GitHub Documentation
+- `services/documentation/stackoverflow_documentation_service.py`: Serviço para Stack Overflow
+- `tests/services/documentation/test_documentation_factory.py`: Testes para o factory de documentação
+
+### Arquivos Modificados:
+
+- `services/youtube/ytdlp_service.py`: Aprimorado com filtros de qualidade, pontuação de relevância e suporte a playlists
+- `core/content_sourcing/default_content_source_service.py`: Integrado com serviços de documentação
+
+### Funcionalidades:
+
+#### Aprimoramentos do YouTube:
+
+- Filtros de qualidade para vídeos (visualizações, duração, data)
+- Sistema de pontuação para ordenação por relevância
+- Extração aprimorada de metadados
+- Suporte a playlists do YouTube
+
+#### Integração com Repositórios de Documentação:
+
+- MDN Web Docs para desenvolvimento web
+- Python Documentation para tópicos de Python
+- GitHub Documentation para Git e GitHub
+- Stack Overflow para diversos tópicos de programação
+
+### Benefícios:
+
+- Recursos de maior qualidade e relevância
+- Maior diversidade de fontes de conteúdo
+- Melhor organização de recursos por tipo e relevância
+- Conteúdo mais estruturado para aprendizado (playlists, documentação oficial)
+
 ## Próximos Passos
 
 1. **Melhorar o suporte a idiomas**: Adicionar mais idiomas e refinar os ajustes específicos
-2. **Otimizar a busca de recursos**: Melhorar a qualidade e relevância dos recursos encontrados
-3. **Personalização por usuário**: Permitir que usuários ajustem suas preferências de estrutura
-4. **Análise de feedback**: Coletar feedback sobre a qualidade dos planos gerados e iterar
-5. **Aprimorar o sistema de filtragem**: Continuar refinando o sistema de filtragem para melhorar a relevância dos recursos sem limitar o número de nós
-6. **Expandir capacidades de NLP**: Implementar técnicas mais avançadas para análise de conteúdo e extração de metadados
+2. **Personalização por usuário**: Permitir que usuários ajustem suas preferências de estrutura
+3. **Análise de feedback**: Coletar feedback sobre a qualidade dos planos gerados e iterar
+4. **Aprimorar o sistema de filtragem**: Continuar refinando o sistema de filtragem para melhorar a relevância dos recursos sem limitar o número de nós
+5. **Expandir capacidades de NLP**: Implementar técnicas mais avançadas para análise de conteúdo e extração de metadados
+6. **Adicionar mais fontes de documentação**: Integrar com mais repositórios de documentação específicos por domínio
